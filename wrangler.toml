@@ -1,0 +1,41 @@
+name = "crash-game"
+main = "src/index.ts"
+compatibility_date = "2024-09-25"
+compatibility_flags = ["nodejs_compat"]
+
+# ---- Static frontend (Mini App UI) served from the same Worker ----
+[assets]
+directory = "./public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+# ---- D1 Database ----
+[[d1_databases]]
+binding = "DB"
+database_name = "crash_game_db"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+# ---- Durable Object: the live crash game room ----
+[[durable_objects.bindings]]
+name = "CRASH_ROOM"
+class_name = "CrashRoom"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["CrashRoom"]
+
+# ---- Cron: pay out pending referral turnover every 30 minutes ----
+[triggers]
+crons = ["*/30 * * * *"]
+
+[vars]
+# Public bot username, used to build the referral deep link: https://t.me/<BOT_USERNAME>?start=ref_<id>
+BOT_USERNAME = "your_bot_username"
+# Minimum withdrawal amount, in Telegram Stars
+MIN_WITHDRAW_STARS = "50"
+# House edge applied to the crash-point distribution (0.03 = 3%)
+HOUSE_EDGE = "0.03"
+
+# Secrets to set with `wrangler secret put <NAME>`:
+#   BOT_TOKEN        - Telegram bot token (from @BotFather)
+#   ADMIN_KEY        - admin auth header value for /api/admin/* routes

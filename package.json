@@ -1,0 +1,20 @@
+{
+  "name": "crash-game",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate": "wrangler d1 execute crash_game_db --file=./migrations/0001_initial.sql",
+    "db:migrate:remote": "wrangler d1 execute crash_game_db --remote --file=./migrations/0001_initial.sql",
+    "build:frontend": "cd frontend && npm install && npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "wrangler": "^3.78.0",
+    "@cloudflare/workers-types": "^4.20240924.0"
+  },
+  "dependencies": {
+    "hono": "^4.6.3"
+  }
+}

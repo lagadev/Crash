@@ -1,0 +1,11 @@
+export interface Env {
+  DB: D1Database;
+  CRASH_ROOM: DurableObjectNamespace;
+  ASSETS: Fetcher;
+
+  BOT_TOKEN: string;
+  ADMIN_KEY: string;
+  BOT_USERNAME: string;
+  MIN_WITHDRAW_STARS: string;
+  HOUSE_EDGE: string;
+}
