@@ -26,7 +26,12 @@ const API = (() => {
     deposit: (stars) => request("/wallet/deposit", { method: "POST", body: { stars } }),
     withdraw: (amount) => request("/wallet/withdraw", { method: "POST", body: { amount } }),
     referral: () => request("/wallet/referral"),
+    leaderboard: () => request("/wallet/leaderboard"),
+    walletHistory: () => request("/wallet/history"),
     gameState: () => request("/game/state"),
+    tasks: () => request("/tasks"),
+    startTask: (id) => request(`/tasks/${id}/start`, { method: "POST" }),
+    claimTask: (id) => request(`/tasks/${id}/claim`, { method: "POST" }),
     wsUrl: () => {
       const proto = location.protocol === "https:" ? "wss:" : "ws:";
       return `${proto}//${location.host}/api/game/ws?initData=${encodeURIComponent(initData())}`;

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Crash Game — Admin</title>
+<link rel="stylesheet" href="/admin/admin.css" />
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="mark"><span class="icon" data-icon="dashboard"></span></div>
+    <h1>Admin Panel</h1>
+    <p>Enter your admin key to continue</p>
+    <div class="err" id="login-error">Invalid admin key</div>
+    <input type="text" id="login-key" placeholder="Admin key" autocomplete="off" />
+    <button class="btn primary" style="width:100%;justify-content:center;padding:13px" onclick="doLogin()">Unlock</button>
+  </div>
+</div>
+
+<!-- ================= SHELL ================= -->
+<div id="admin-shell">
+  <div class="sidebar">
+    <div class="brand"><div class="mark"><span class="icon" data-icon="rocket"></span></div>Crash Admin</div>
+    <button class="nav-item active" data-view="view-dashboard" onclick="showView('view-dashboard')"><span class="icon" data-icon="dashboard"></span>Dashboard</button>
+    <button class="nav-item" data-view="view-users" onclick="showView('view-users')"><span class="icon" data-icon="profile"></span>Users</button>
+    <button class="nav-item" data-view="view-withdrawals" onclick="showView('view-withdrawals')"><span class="icon" data-icon="withdraw"></span>Withdrawals</button>
+    <button class="nav-item" data-view="view-tasks" onclick="showView('view-tasks')"><span class="icon" data-icon="task"></span>Tasks</button>
+    <button class="nav-item" data-view="view-game" onclick="showView('view-game')"><span class="icon" data-icon="game"></span>Game</button>
+    <button class="nav-item" data-view="view-bot" onclick="showView('view-bot')"><span class="icon" data-icon="bot"></span>Bot &amp; Broadcast</button>
+    <div class="spacer"></div>
+    <button class="nav-item" onclick="doLogout()"><span class="icon" data-icon="logout"></span>Logout</button>
+  </div>
+
+  <div class="main">
+
+    <!-- ---------------- Dashboard ---------------- -->
+    <div id="view-dashboard" class="view active">
+      <div class="view-head"><div><h1>Dashboard</h1><p>Live overview of your Crash Game</p></div>
+        <button class="btn ghost" onclick="loadDashboard()">Refresh</button>
+      </div>
+      <div class="grid" id="dashboard-stats"></div>
+      <div class="panel">
+        <h3>Last Round</h3>
+        <div id="dashboard-last-round" class="empty-state">Loading…</div>
+      </div>
+    </div>
+
+    <!-- ---------------- Users ---------------- -->
+    <div id="view-users" class="view">
+      <div class="view-head"><div><h1>Users</h1><p>Search, adjust balances, ban/unban</p></div>
+        <div class="search-box"><span class="icon" data-icon="search"></span><input type="text" id="user-search" placeholder="Search by ID, username, name…" oninput="debouncedUserSearch()" /></div>
+      </div>
+      <div class="panel"><div class="table-wrap"><table>
+        <thead><tr><th>User</th><th>Balance</th><th>Wagered</th><th>Won</th><th>Status</th><th>Joined</th><th></th></tr></thead>
+        <tbody id="users-tbody"></tbody>
+      </table></div></div>
+    </div>
+
+    <!-- ---------------- Withdrawals ---------------- -->
+    <div id="view-withdrawals" class="view">
+      <div class="view-head"><div><h1>Withdrawals</h1><p>Review and settle payout requests</p></div>
+        <select id="withdraw-filter" style="width:auto" onchange="loadWithdrawals()">
+          <option value="">All</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option>
+        </select>
+      </div>
+      <div class="panel"><div class="table-wrap"><table>
+        <thead><tr><th>User</th><th>Amount</th><th>Status</th><th>Requested</th><th></th></tr></thead>
+        <tbody id="withdrawals-tbody"></tbody>
+      </table></div></div>
+    </div>
+
+    <!-- ---------------- Tasks ---------------- -->
+    <div id="view-tasks" class="view">
+      <div class="view-head"><div><h1>Task Management</h1><p>Create and manage earn-tasks shown in the app</p></div>
+        <button class="btn primary" onclick="openTaskModal()"><span class="icon" data-icon="plus"></span>Add Task</button>
+      </div>
+      <div class="panel"><div class="table-wrap"><table>
+        <thead><tr><th>Task</th><th>Reward</th><th>Link</th><th>Status</th><th></th></tr></thead>
+        <tbody id="tasks-tbody"></tbody>
+      </table></div></div>
+    </div>
+
+    <!-- ---------------- Game ---------------- -->
+    <div id="view-game" class="view">
+      <div class="view-head"><div><h1>Game Management</h1><p>Round history and manual crash-point control</p></div></div>
+
+      <div class="panel">
+        <h3>Force Next Round's Crash Point</h3>
+        <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Set the exact multiplier the <b>next</b> round will crash at (e.g. 1.28). It applies once, then clears automatically.</p>
+        <div id="forced-crash-banner"></div>
+        <div class="field-row">
+          <div class="field"><label>Crash Multiplier</label><input type="number" id="force-crash-input" step="0.01" min="1" placeholder="e.g. 1.28" /></div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn primary" onclick="setForcedCrash()">Set Override</button>
+          <button class="btn ghost" onclick="clearForcedCrash()">Clear</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Recent Rounds</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Round</th><th>Crash</th><th>Bets</th><th>Wagered</th><th>Payout</th><th>Started</th></tr></thead>
+          <tbody id="rounds-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ---------------- Bot & Broadcast ---------------- -->
+    <div id="view-bot" class="view">
+      <div class="view-head"><div><h1>Bot &amp; Broadcast</h1><p>/start message and mass broadcasts, with image, text and buttons</p></div></div>
+
+      <div class="panel">
+        <h3>/start Message</h3>
+        <div class="field"><label>Image URL (optional)</label><input type="url" id="start-image" placeholder="https://…" /></div>
+        <div class="field"><label>Text</label><textarea id="start-text" placeholder="Welcome text (HTML allowed)"></textarea></div>
+        <label>Buttons</label>
+        <div id="start-buttons-editor"></div>
+        <button class="btn ghost sm" onclick="addButtonRow('start-buttons-editor')" style="margin-bottom:14px"><span class="icon" data-icon="plus"></span>Add Button</button>
+        <br/>
+        <button class="btn primary" onclick="saveStartMessage()">Save /start Message</button>
+      </div>
+
+      <div class="panel">
+        <h3>Broadcast to All Users</h3>
+        <div class="field"><label>Image URL (optional)</label><input type="url" id="bcast-image" placeholder="https://…" /></div>
+        <div class="field"><label>Text</label><textarea id="bcast-text" placeholder="Broadcast message (HTML allowed)"></textarea></div>
+        <label>Buttons</label>
+        <div id="bcast-buttons-editor"></div>
+        <button class="btn ghost sm" onclick="addButtonRow('bcast-buttons-editor')" style="margin-bottom:14px"><span class="icon" data-icon="plus"></span>Add Button</button>
+        <br/>
+        <button class="btn gold" onclick="sendBroadcast()">Send Broadcast</button>
+        <div id="bcast-result" style="margin-top:10px;color:var(--muted);font-size:13px"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ User detail modal ============ -->
+<div class="modal-backdrop" id="user-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="user-modal-title">User</h3><button class="modal-close" onclick="closeModal('user-modal')"><span class="icon" data-icon="close"></span></button></div>
+    <div id="user-modal-body"></div>
+  </div>
+</div>
+
+<!-- ============ Task modal ============ -->
+<div class="modal-backdrop" id="task-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="task-modal-title">Add Task</h3><button class="modal-close" onclick="closeModal('task-modal')"><span class="icon" data-icon="close"></span></button></div>
+    <input type="hidden" id="task-id" />
+    <div class="field"><label>Task Name</label><input type="text" id="task-name" placeholder="Join our channel" /></div>
+    <div class="field"><label>Logo URL</label><input type="url" id="task-logo" placeholder="https://…" /></div>
+    <div class="field"><label>Link</label><input type="url" id="task-link" placeholder="https://t.me/…" /></div>
+    <div class="field-row">
+      <div class="field"><label>Reward (stars)</label><input type="number" id="task-reward" min="0" /></div>
+      <div class="field"><label>Active</label><select id="task-active"><option value="1">Active</option><option value="0">Hidden</option></select></div>
+    </div>
+    <button class="btn primary" style="width:100%;justify-content:center;padding:12px" onclick="saveTask()">Save Task</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/src/icons.js"></script>
+<script>
+document.querySelectorAll('[data-icon]').forEach((el) => { el.innerHTML = (window.ICONS || {})[el.dataset.icon] || ''; });
+</script>
+<script src="/admin/admin.js"></script>
+</body>
+</html>

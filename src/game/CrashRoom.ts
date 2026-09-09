@@ -4,14 +4,15 @@ import {
   cashoutBet,
   freshRound,
   publicRoundView,
-  pushHistory,
   pickPrizeEmoji,
   settleLosers,
   tickRound,
   CRASHED_MS,
+  MIN_BET,
   TICK_RUNNING_MS,
   TICK_WAITING_MS,
   WAITING_MS,
+  HISTORY_LIMIT,
 } from "./engine";
 import { deriveCrashPoint, generateServerSeed } from "./multiplier";
 import type { PlayerBet, RoundState } from "./types";
@@ -32,7 +33,6 @@ export class CrashRoom implements DurableObject {
   private sessions: Session[] = [];
   private round: RoundState;
   private crashPoint = 1.0;
-  private roundHash = "";
   private serverSeed = "";
   private loopRunning = false;
   private roundIdCounter = 0;
@@ -111,12 +111,20 @@ export class CrashRoom implements DurableObject {
   }
 
   private async placeBet(session: Session, amount: number, autoCashoutAt: number | null) {
-    if (!Number.isInteger(amount) || amount <= 0) {
-      session.ws.send(JSON.stringify({ type: "error", payload: "Invalid bet amount" }));
+    if (!Number.isInteger(amount) || amount < MIN_BET) {
+      session.ws.send(JSON.stringify({ type: "error", payload: `Minimum bet is ${MIN_BET} \u2b50` }));
       return;
     }
     if (this.round.phase !== "waiting") {
       session.ws.send(JSON.stringify({ type: "error", payload: "Betting is closed for this round" }));
+      return;
+    }
+
+    const userRow = await this.env.DB.prepare(`SELECT banned FROM users WHERE id = ?`).bind(session.userId).first<{
+      banned: number;
+    }>();
+    if (userRow?.banned) {
+      session.ws.send(JSON.stringify({ type: "error", payload: "Your account is suspended" }));
       return;
     }
 
@@ -247,10 +255,16 @@ export class CrashRoom implements DurableObject {
 
     tickRound(this.round, now, this.crashPoint);
 
-    if (this.round.phase === "waiting" && this.round.countdownMs <= 0) {
-      this.round.phase = "running";
-      this.round.startedAt = now;
-      this.broadcast({ type: "round_start", payload: publicRoundView(this.round) });
+    if (this.round.phase === "waiting") {
+      // Broadcast the live countdown every tick - previously this only fired
+      // once at round start, so the "5..4..3..2..1" never visibly counted down.
+      this.broadcast({ type: "countdown", payload: { countdownSeconds: Math.ceil(this.round.countdownMs / 1000) } });
+
+      if (this.round.countdownMs <= 0) {
+        this.round.phase = "running";
+        this.round.startedAt = now;
+        this.broadcast({ type: "round_start", payload: publicRoundView(this.round) });
+      }
       return;
     }
 
@@ -258,7 +272,6 @@ export class CrashRoom implements DurableObject {
       // Handle auto-cashouts
       for (const b of this.round.bets) {
         if (b.status === "placed" && b.autoCashoutAt && this.round.multiplier >= b.autoCashoutAt) {
-          const fakeSession = { userId: b.userId } as Session;
           cashoutBet(this.round, b.userId, b.autoCashoutAt);
           const winAmount = Math.floor(b.amount * b.autoCashoutAt);
           this.env.DB.prepare(
@@ -279,6 +292,16 @@ export class CrashRoom implements DurableObject {
     }
   }
 
+  /** Reads the last N *completed* rounds straight from D1, so history survives Durable Object eviction/restarts. */
+  private async loadHistoryFromD1(): Promise<number[]> {
+    const rows = await this.env.DB.prepare(
+      `SELECT crash_point FROM rounds WHERE ended_at IS NOT NULL ORDER BY id DESC LIMIT ?`
+    )
+      .bind(HISTORY_LIMIT)
+      .all<{ crash_point: number }>();
+    return (rows.results ?? []).map((r) => r.crash_point);
+  }
+
   private async beginRound(now: number) {
     this.roundIdCounter += 1;
     await this.state.storage.put("roundIdCounter", this.roundIdCounter);
@@ -289,18 +312,25 @@ export class CrashRoom implements DurableObject {
       this.roundIdCounter,
       Number(this.env.HOUSE_EDGE || "0.03")
     );
-    this.crashPoint = crashPoint;
-    this.roundHash = hash;
 
-    const prevHistory = this.round.history;
+    // Admin override: force this round to crash at a specific multiplier.
+    const control = await this.env.DB.prepare(
+      `SELECT forced_crash_point FROM game_control WHERE id = 1`
+    ).first<{ forced_crash_point: number | null }>();
+    this.crashPoint = control?.forced_crash_point ? control.forced_crash_point : crashPoint;
+    if (control?.forced_crash_point) {
+      await this.env.DB.prepare(`UPDATE game_control SET forced_crash_point = NULL WHERE id = 1`).run();
+    }
+
+    const history = await this.loadHistoryFromD1();
     this.round = freshRound(this.roundIdCounter, hash);
-    this.round.history = prevHistory;
+    this.round.history = history;
     this.round.startedAt = now;
 
     await this.env.DB.prepare(
       `INSERT INTO rounds (id, crash_point, server_seed, hash, started_at) VALUES (?, ?, ?, ?, ?)`
     )
-      .bind(this.roundIdCounter, crashPoint, this.serverSeed, hash, Math.floor(now / 1000))
+      .bind(this.roundIdCounter, this.crashPoint, this.serverSeed, hash, Math.floor(now / 1000))
       .run()
       .catch(() => {});
 
@@ -308,10 +338,7 @@ export class CrashRoom implements DurableObject {
   }
 
   private async finishRound(now: number) {
-    const losers = settleLosers(this.round);
-    for (const l of losers) {
-      // Bets are already debited at placement time; nothing further to charge.
-    }
+    settleLosers(this.round);
 
     const totalWagered = this.round.bets.reduce((s, b) => s + b.amount, 0);
     const totalPayout = this.round.bets
@@ -343,7 +370,8 @@ export class CrashRoom implements DurableObject {
         .catch(() => {});
     }
 
-    this.round.history = pushHistory(this.round.history, this.round.crashPoint ?? this.crashPoint);
+    // Immediate optimistic history update (D1 is now also authoritative for the next round).
+    this.round.history = [this.round.crashPoint ?? this.crashPoint, ...this.round.history].slice(0, HISTORY_LIMIT);
     this.broadcast({ type: "crash", payload: publicRoundView(this.round) });
 
     // Hold on the crashed frame for CRASHED_MS so clients can show crashed.gif

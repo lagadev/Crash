@@ -21,7 +21,11 @@ export async function authenticate(c: Context<{ Bindings: Env }>): Promise<Teleg
   const params = new URLSearchParams(initData);
   const startParam = params.get("start_param") || "";
 
-  const existing = await c.env.DB.prepare(`SELECT id FROM users WHERE id = ?`).bind(user.id).first();
+  const existing = await c.env.DB.prepare(`SELECT id, banned FROM users WHERE id = ?`).bind(user.id).first<{
+    id: number;
+    banned: number;
+  }>();
+  if (existing?.banned) return null;
 
   if (!existing) {
     await c.env.DB.prepare(

@@ -1,71 +1,103 @@
-# 🚀 Crash Game — Telegram Mini App (single Cloudflare Worker deploy)
+# 🚀 Crash Game — Telegram Mini App + Admin Panel (single Cloudflare Worker)
 
-A real-time multiplayer Crash game for Telegram: a Mini App front-end, a
-Durable-Object-powered game room broadcasting over WebSockets, D1 for
-persistence, Telegram **Stars** deposits, star withdrawals, and a 3-level
-referral program — all deployed as **one Cloudflare Worker**.
+A real-time multiplayer Crash game for Telegram: a tabbed Mini App (Crash /
+Task / Refer / Wallet / Profile), a Durable-Object game room, D1 storage,
+Telegram **Stars** deposits & withdrawals, a 3-level referral program with a
+Top-50 leaderboard, an earn-task system, and a full **Admin Panel** — all in
+one Cloudflare Worker.
 
-## What's inside
+## What's new in this rebuild
+
+- **New tabbed layout**: bottom nav with **Crash · Task · Refer · Wallet ·
+  Profile**, replacing the old single home-menu screen.
+- **Fixed: history disappearing.** The last-10 crash history is now read
+  straight from the `rounds` table in D1 on every new round, instead of
+  living only in the Durable Object's memory — so it survives DO
+  eviction/restarts and is always populated.
+- **Fixed: 5-second countdown not visibly counting.** The room now
+  broadcasts the countdown on every tick while betting is open (previously
+  it only broadcast once at the very start of the round, so the number
+  never updated).
+- **"Connecting to server…" state** on the Crash tab while the WebSocket is
+  establishing, so the UI never looks frozen before the live round loads.
+- **Premium card redesign**: gradient glass cards, soft shadows, and color
+  grading across the multiplier chips, live bet list, stat cards, etc.
+- **Minimum bet is now 1 star** (was 50). Minimum withdrawal stays **50 stars**.
+- **Task tab**: task name, logo, reward and a Start -> Claim flow.
+- **Refer tab**: a promo card in the style of the reference screenshot
+  ("Invite friends and earn **10%** from their deposits!") plus your real
+  turnover-based earnings, and a **Top 50 leaderboard** ranked by referral
+  earnings.
+- **Wallet tab**: balance, deposit, withdraw, plus withdrawal-request status
+  and a recent-transactions list.
+- **Profile tab**: full ID details (Telegram ID, username, first name, join
+  date) plus lifetime stats.
+- **Admin Panel** at **`/admin/`** — see below.
+
+## Admin Panel (`/admin/`)
+
+A single static page (no separate deploy) gated by an **admin key** you set
+as a secret. Enter the key once in the browser; it's stored in
+`localStorage` and sent as `X-Admin-Key` on every admin API call, which the
+Worker checks against the `ADMIN_KEY` secret.
+
+- **Dashboard** - total users, total wagered/deposited/withdrawn, pending
+  withdrawals, last round summary.
+- **Users** - search by ID / username / name, view a user's stats, **adjust
+  balance** (add/subtract or set an exact value), **ban / unban**.
+- **Withdrawals** - filter by status, **approve** (marks paid, notifies the
+  user) or **reject** (auto-refunds the user's balance, notifies them).
+- **Tasks** - add / edit / delete tasks: name, logo URL, link, reward,
+  active toggle.
+- **Game Management** - recent rounds (crash point, bets, wagered, payout),
+  and a **force-next-crash** control: type e.g. `1.28` and the *next* round
+  will crash at exactly that multiplier (clears itself after one use).
+- **Bot & Broadcast**:
+  - Edit the `/start` message: image URL, text, and a button builder
+    (text + URL + style: primary / success / danger).
+  - Send a broadcast to every non-banned user with the same image/text/
+    button builder, and see a sent/failed count afterward.
+
+  > **On button "style":** Telegram's Bot API doesn't currently expose a
+  > native colored/styled inline button - there's no `style` field it
+  > accepts. So the admin panel still lets you pick **primary / success /
+  > danger** per button (matching the `{"text":"Confirm","style":"success"}`
+  > shape you specified), and the Worker degrades that into a small visual
+  > prefix (checkmark / stop / play) on the button label today. If a future
+  > Bot API / Telegram client version adds real colored buttons, this is
+  > the one place (`styledButton()` in `src/api/admin.ts`, and the matching
+  > code in `src/api/bot.ts`) you'd update to send the native style
+  > property instead - the admin UI and stored JSON shape don't need to
+  > change.
+
+**Security note:** the `/admin/` page itself is reachable by anyone who
+knows the URL (it's a static file), but every admin API call is rejected
+without the correct `ADMIN_KEY`. For extra protection, put Cloudflare
+Access (or similar) in front of `/admin/*`.
+
+## Project structure
 
 ```
 crash-game/
-├── src/                  Worker (TypeScript, Hono)
-│   ├── index.ts          entry point, routes, cron handler
-│   ├── api/              auth.ts, game.ts, wallet.ts, users.ts, bot.ts
-│   ├── game/             CrashRoom.ts (Durable Object), engine.ts, multiplier.ts, types.ts
-│   └── utils/            telegram.ts, response.ts, validation.ts
-├── public/               Mini App front-end, served by the Worker's ASSETS binding
-│   ├── index.html
-│   ├── styles/main.css
-│   ├── src/app.js, src/services/api.js, src/services/socket.js
-│   └── assets/           drop flying.gif / crashed.gif here (optional, has fallback)
-├── migrations/0001_initial.sql
-└── wrangler.toml
+|-- src/                     Worker (TypeScript, Hono)
+|   |-- index.ts             entry point, routes, cron handler
+|   |-- api/                 auth.ts, game.ts, wallet.ts, users.ts, tasks.ts, admin.ts, bot.ts
+|   |-- game/                CrashRoom.ts (Durable Object), engine.ts, multiplier.ts, types.ts
+|   `-- utils/               telegram.ts, response.ts, validation.ts
+|-- public/                  Mini App + Admin Panel, served by the Worker's ASSETS binding
+|   |-- index.html, styles/main.css, src/app.js, src/services/*, src/icons.js
+|   |-- admin/               index.html, admin.css, admin.js
+|   `-- assets/              drop flying.gif / crashed.gif here (optional, has fallback)
+|-- migrations/              0001_initial.sql, 0002_admin_tasks.sql
+`-- wrangler.toml
 ```
-
-> **Note on the front-end stack:** the brief sketched a Vue + Vite front-end.
-> To keep this a genuinely **single-command deploy** with zero build step,
-> the UI here is plain HTML/CSS/JS served straight from `public/` via
-> Workers Static Assets — same pages/components/services structure in
-> spirit, no bundler required. If you'd rather have the Vue/Vite version,
-> it's a drop-in swap: point `[assets] directory` in `wrangler.toml` at
-> `frontend/dist` and add a `vite build` step.
-
-> **Note on game art:** the flying rocket / crash explosion are emoji-based
-> CSS animations by default (🚀 / 💥) so the game works immediately with no
-> extra assets. Drop your own `flying.gif` and `crashed.gif` into
-> `public/assets/` and the app will use them automatically instead.
-
-## How it works
-
-1. **Home screen** — single-row "🎮 Play Crash Game" button, a "👤 Profile"
-   / "💰 Withdraw" row, and a "⭐️ Refer Program" button, per the spec.
-2. **Crash game** — every round: 5s betting countdown → rocket climbs while
-   the multiplier rises → crash. Bets, cash-outs, the multiplier and the
-   live "who bet what" list are all pushed in real time over one shared
-   WebSocket room (`CrashRoom` Durable Object), so every player in the Mini
-   App sees the same round at the same time.
-3. **Wallet** — deposits are Telegram **Stars** invoices (currency `XTR`)
-   opened with `Telegram.WebApp.openInvoice`; the bot webhook credits the
-   balance on `successful_payment`. Withdrawals require a **minimum of 50 ⭐**
-   and are queued in `withdraw_requests` for manual/admin payout.
-4. **Referral program** — a friend's *first deposit* instantly credits you
-   10%. After that, 0.5% / 0.2% / 0.1% of their (and their sub-referrals')
-   wager turnover accrues into `referral_pending`; a Cron Trigger runs every
-   30 minutes and moves anything ≥ 0.01 ⭐ into spendable balance.
-5. **Provably fair** — each round's crash point is derived from a random
-   server seed hashed with the round id; the hash is published to clients
-   before the round starts (`serverHash`) so results can be verified after
-   the seed would be revealed.
 
 ## Setup
 
-### 1. Create the bot & the Mini App
+### 1. Bot & Mini App
 1. Create a bot with **@BotFather**, grab the token.
-2. `/setmenubutton` or `/newapp` to attach a Mini App to your bot, pointing
-   at your Worker's URL (you'll get this after the first deploy).
-3. Make sure **Payments → Stars** is enabled for the bot (it is by default;
-   `createInvoiceLink` with `currency: "XTR"` just works).
+2. Attach a Mini App pointing at your Worker's URL.
+3. Stars payments are enabled by default (`currency: "XTR"` just works).
 
 ### 2. Install & configure
 
@@ -73,30 +105,24 @@ crash-game/
 npm install
 npx wrangler login
 
-# Create the D1 database, then paste the returned database_id into wrangler.toml
-npx wrangler d1 create crash_game_db
+npx wrangler d1 create crash_game_db   # paste the id into wrangler.toml
+npm run db:migrate:remote              # applies both migration files
 
-# Apply the schema
-npm run db:migrate:remote
-
-# Secrets
-npx wrangler secret put BOT_TOKEN     # token from @BotFather
-npx wrangler secret put ADMIN_KEY     # any strong random string, for future admin routes
+npx wrangler secret put BOT_TOKEN      # token from @BotFather
+npx wrangler secret put ADMIN_KEY      # any strong random string - this is your admin panel password
 ```
 
-Edit `wrangler.toml`:
-- `database_id` → the id printed by `wrangler d1 create`
-- `BOT_USERNAME` → your bot's @username (used to build referral links)
-- `MIN_WITHDRAW_STARS` / `HOUSE_EDGE` → tweak if you like
+Edit `wrangler.toml`: `database_id`, `BOT_USERNAME`, and optionally
+`HOUSE_EDGE` / `MIN_WITHDRAW_STARS`.
 
-### 3. Deploy (single command)
+### 3. Deploy
 
 ```bash
 npm run deploy
 ```
 
-That's it — the same Worker serves the REST API, the WebSocket game room,
-and the Mini App's static files.
+One Worker serves the REST API, the WebSocket game room, the Mini App, and
+the Admin Panel.
 
 ### 4. Point the bot at your Worker
 
@@ -104,7 +130,18 @@ and the Mini App's static files.
 curl "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook?url=https://<your-worker>.workers.dev/telegram/webhook"
 ```
 
-Then open your bot in Telegram, tap **/start**, and launch the Mini App.
+Then open the bot, tap **/start**, launch the Mini App - and open
+`https://<your-worker>.workers.dev/admin/` to sign in with your `ADMIN_KEY`.
+
+### 5. Seed some tasks (optional)
+
+Use the Admin Panel's **Tasks** tab, or call the API directly:
+
+```bash
+curl -X POST https://<your-worker>.workers.dev/api/admin/tasks \
+  -H "X-Admin-Key: <your admin key>" -H "Content-Type: application/json" \
+  -d '{"name":"Join our channel","link":"https://t.me/yourchannel","reward":10}'
+```
 
 ## Local development
 
@@ -112,24 +149,13 @@ Then open your bot in Telegram, tap **/start**, and launch the Mini App.
 npm run dev
 ```
 
-`wrangler dev` serves the Worker (API + WebSocket + static UI) on
-`localhost:8787`. Telegram's `initData` verification will fail outside a
-real Telegram client/WebView, so for local UI iteration you'll mostly be
-testing the game loop with the WebSocket console; do full auth testing via
-Telegram's Mini App preview.
+Telegram's `initData` verification needs a real Telegram WebView, so do
+full auth testing via Telegram's Mini App preview; the Admin Panel
+(`/admin/`) works fully locally against `wrangler dev` since it only needs
+your `ADMIN_KEY`.
 
-## Database schema
+## Notes on game art
 
-See `migrations/0001_initial.sql` — `users`, `referral_links` (level 1-3
-ancestor lookup for O(1) turnover crediting), `rounds`, `bets`,
-`transactions`, `withdraw_requests`, `deposits`.
-
-## Extending
-
-- **Admin panel**: add routes under `/api/admin/*` gated by the `ADMIN_KEY`
-  secret to approve/reject `withdraw_requests` and adjust balances.
-- **Multiple rooms / stakes tiers**: `CrashRoom` is already looked up by
-  name (`idFromName("global-crash-room")`) — spin up more named rooms for
-  e.g. high-stakes tables.
-- **Vue front-end**: swap `public/` for a Vite build output as noted above
-  if you want the componentized Vue structure from the original brief.
+The rocket / crash visuals fall back to a built-in animated emoji (rocket /
+explosion). Drop `flying.gif` / `crashed.gif` into `public/assets/` to use
+your own - no code changes needed.

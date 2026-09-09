@@ -5,7 +5,8 @@ export const WAITING_MS = 5_000; // "start counting 5 sec" betting window
 export const CRASHED_MS = 3_500; // how long the crashed.gif stays up before the next round
 export const TICK_RUNNING_MS = 100;
 export const TICK_WAITING_MS = 250;
-export const HISTORY_LIMIT = 20;
+export const HISTORY_LIMIT = 10; // "always keep the last 10 rounds"
+export const MIN_BET = 1; // minimum bet is 1 star
 
 export const PRIZE_EMOJIS = ["🍓", "⭐", "🎩", "🕯️", "🧣", "🍩", "💎", "🎁", "🍒", "🔥"];
 

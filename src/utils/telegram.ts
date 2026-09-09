@@ -80,6 +80,16 @@ export class TelegramBotApi {
     return this.call("sendMessage", { chat_id: chatId, text, parse_mode: "HTML", ...extra });
   }
 
+  sendPhotoBroadcast(chatId: number, photoUrl: string, caption: string, replyMarkup?: unknown) {
+    return this.call("sendPhoto", {
+      chat_id: chatId,
+      photo: photoUrl,
+      caption,
+      parse_mode: "HTML",
+      reply_markup: replyMarkup,
+    });
+  }
+
   /** Creates a Telegram Stars invoice link (currency XTR) for depositing into the game wallet. */
   createStarsInvoiceLink(title: string, description: string, payload: string, stars: number) {
     return this.call<string>("createInvoiceLink", {

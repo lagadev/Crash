@@ -5,6 +5,8 @@ import { usersApi } from "./api/users";
 import { walletApi } from "./api/wallet";
 import { gameApi } from "./api/game";
 import { botApi } from "./api/bot";
+import { adminApi } from "./api/admin";
+import { tasksApi } from "./api/tasks";
 
 export { CrashRoom } from "./game/CrashRoom";
 
@@ -15,6 +17,8 @@ app.use("/api/*", cors());
 app.route("/api/users", usersApi);
 app.route("/api/wallet", walletApi);
 app.route("/api/game", gameApi);
+app.route("/api/tasks", tasksApi);
+app.route("/api/admin", adminApi);
 app.route("/telegram", botApi);
 
 app.get("/api/health", (c) => c.json({ ok: true, time: Date.now() }));

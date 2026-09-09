@@ -50,11 +50,29 @@ botApi.post("/webhook", async (c) => {
   const text: string | undefined = update.message?.text;
   if (text && text.startsWith("/start")) {
     const chatId = update.message.chat.id as number;
-    await bot.sendMessage(chatId, "\ud83d\ude80 Welcome to <b>Crash Game</b>! Tap below to play.", {
-      reply_markup: {
-        inline_keyboard: [[{ text: "\ud83c\udfae Open Crash Game", web_app: { url: `https://${c.req.header("host")}/` } }]],
-      },
-    });
+    const appUrl = `https://${c.req.header("host")}/`;
+    const openAppButton = { text: "\ud83c\udfae Open Crash Game", web_app: { url: appUrl } };
+
+    const settingsRow = await c.env.DB.prepare(`SELECT value FROM settings WHERE key = 'start_message'`).first<{
+      value: string;
+    }>();
+    const custom = settingsRow?.value ? JSON.parse(settingsRow.value) : null;
+
+    const caption = custom?.text || "\ud83d\ude80 Welcome to <b>Crash Game</b>! Tap below to play.";
+    const customButtons: { text: string; url?: string; style?: string }[][] = custom?.buttons || [];
+    const styledRows = customButtons.map((row) =>
+      row.map((btn) => {
+        const prefix = btn.style === "success" ? "\u2705 " : btn.style === "danger" ? "\u26d4 " : btn.style === "primary" ? "\u25b6\ufe0f " : "";
+        return { text: `${prefix}${btn.text}`, url: btn.url || undefined };
+      })
+    );
+    const replyMarkup = { inline_keyboard: [[openAppButton], ...styledRows] };
+
+    if (custom?.imageUrl) {
+      await bot.sendPhotoBroadcast(chatId, custom.imageUrl, caption, replyMarkup);
+    } else {
+      await bot.sendMessage(chatId, caption, { reply_markup: replyMarkup });
+    }
   }
 
   return ok({});

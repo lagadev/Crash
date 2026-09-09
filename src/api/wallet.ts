@@ -83,3 +83,34 @@ walletApi.get("/referral", async (c) => {
     link: `https://t.me/${c.env.BOT_USERNAME}?start=ref_${user.id}`,
   });
 });
+
+/** Recent transactions + withdrawal requests, for the Wallet tab. */
+walletApi.get("/history", async (c) => {
+  const user = await authenticate(c);
+  if (!user) return fail("Unauthorized", 401);
+
+  const [tx, withdrawals] = await Promise.all([
+    c.env.DB.prepare(`SELECT type, amount, meta, created_at FROM transactions WHERE user_id = ? ORDER BY id DESC LIMIT 30`)
+      .bind(user.id)
+      .all(),
+    c.env.DB.prepare(`SELECT id, amount, status, created_at FROM withdraw_requests WHERE user_id = ? ORDER BY id DESC LIMIT 20`)
+      .bind(user.id)
+      .all(),
+  ]);
+
+  return ok({ transactions: tx.results ?? [], withdrawals: withdrawals.results ?? [] });
+});
+
+/** Top 50 referrers, ranked by lifetime referral earnings. */
+walletApi.get("/leaderboard", async (c) => {
+  const user = await authenticate(c);
+  if (!user) return fail("Unauthorized", 401);
+
+  const rows = await c.env.DB.prepare(
+    `SELECT id, username, first_name, invited_count, referral_earned
+     FROM users WHERE invited_count > 0 OR referral_earned > 0
+     ORDER BY referral_earned DESC, invited_count DESC LIMIT 50`
+  ).all();
+
+  return ok({ leaderboard: rows.results ?? [] });
+});
