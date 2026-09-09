@@ -13,7 +13,7 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "crash_game_db"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "5e183b38-caf4-44dc-a500-89791463ba44"
 
 # ---- Durable Object: the live crash game room ----
 [[durable_objects.bindings]]
@@ -30,7 +30,7 @@ crons = ["*/30 * * * *"]
 
 [vars]
 # Public bot username, used to build the referral deep link: https://t.me/<BOT_USERNAME>?start=ref_<id>
-BOT_USERNAME = "your_bot_username"
+BOT_USERNAME = "LagahCrashBot"
 # Minimum withdrawal amount, in Telegram Stars
 MIN_WITHDRAW_STARS = "50"
 # House edge applied to the crash-point distribution (0.03 = 3%)
