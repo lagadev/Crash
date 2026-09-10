@@ -28,11 +28,24 @@ export async function authenticate(c: Context<{ Bindings: Env }>): Promise<Teleg
   if (existing?.banned) return null;
 
   if (!existing) {
+    const joiningBonusRow = await c.env.DB.prepare(`SELECT value FROM settings WHERE key = 'joining_bonus'`).first<{
+      value: string;
+    }>();
+    const joiningBonus = Math.max(0, Math.floor(Number(joiningBonusRow?.value ?? "0")));
+
     await c.env.DB.prepare(
-      `INSERT INTO users (id, username, first_name, photo_url) VALUES (?, ?, ?, ?)`
+      `INSERT INTO users (id, username, first_name, photo_url, balance) VALUES (?, ?, ?, ?, ?)`
     )
-      .bind(user.id, user.username ?? null, user.first_name ?? null, user.photo_url ?? null)
+      .bind(user.id, user.username ?? null, user.first_name ?? null, user.photo_url ?? null, joiningBonus)
       .run();
+
+    if (joiningBonus > 0) {
+      await c.env.DB.prepare(
+        `INSERT INTO transactions (user_id, type, amount, meta) VALUES (?, 'joining_bonus', ?, '{}')`
+      )
+        .bind(user.id, joiningBonus)
+        .run();
+    }
 
     const m = startParam.match(/^ref_(\d+)$/);
     if (m) {

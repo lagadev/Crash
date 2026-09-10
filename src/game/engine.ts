@@ -8,12 +8,6 @@ export const TICK_WAITING_MS = 250;
 export const HISTORY_LIMIT = 10; // "always keep the last 10 rounds"
 export const MIN_BET = 1; // minimum bet is 1 star
 
-export const PRIZE_EMOJIS = ["🍓", "⭐", "🎩", "🕯️", "🧣", "🍩", "💎", "🎁", "🍒", "🔥"];
-
-export function pickPrizeEmoji(): string {
-  return PRIZE_EMOJIS[Math.floor(Math.random() * PRIZE_EMOJIS.length)];
-}
-
 export function freshRound(roundId: number, serverHash: string): RoundState {
   return {
     roundId,
@@ -80,14 +74,46 @@ export function publicRoundView(state: RoundState) {
     history: state.history,
     serverHash: state.serverHash,
     crashPoint: state.phase === "crashed" ? state.crashPoint : null,
-    bets: state.bets.map((b) => ({
-      userId: b.userId,
-      username: b.username,
-      photoUrl: b.photoUrl,
-      amount: b.amount,
-      multiplier: b.cashedOutAt ?? (state.phase === "running" ? state.multiplier : 1.0),
-      status: b.status,
-      prizeEmoji: b.prizeEmoji,
-    })),
+    bets: state.bets.map((b) => {
+      const activeMultiplier = b.cashedOutAt ?? (state.phase === "running" ? state.multiplier : 1.0);
+      return {
+        userId: b.userId,
+        username: b.username,
+        photoUrl: b.photoUrl,
+        amount: b.amount,
+        multiplier: activeMultiplier,
+        // Live "winnings so far" the UI grows in place of a static prize icon.
+        winningsNow: Math.floor(b.amount * activeMultiplier),
+        status: b.status,
+      };
+    }),
   };
+}
+
+export interface GameTuning {
+  bigBetThreshold: number; // a single bet >= this instantly biases toward a fast crash
+  bigBetMaxCrash: number; // ceiling for that fast crash (e.g. 1.5x)
+  multiplayerThreshold: number; // this many players or more biases toward a longer round
+  multiplayerMinCrash: number; // floor multiplier used as the base of that boost
+}
+
+/**
+ * "Gamer logic": nudges the provably-fair base crash point using the
+ * current round's bets, per the requested house behaviour:
+ *  - a lot of players queued up together -> the round tends to run longer
+ *  - any single very large bet -> the round tends to crash fast
+ * Whichever condition applies, a small random component is kept so results
+ * still aren't perfectly predictable round to round.
+ */
+export function applyGameTuning(baseCrashPoint: number, bets: PlayerBet[], tuning: GameTuning): number {
+  const maxBet = bets.reduce((m, b) => Math.max(m, b.amount), 0);
+  if (maxBet >= tuning.bigBetThreshold) {
+    const ceiling = Math.max(1.01, tuning.bigBetMaxCrash);
+    return Math.round((1 + Math.random() * (ceiling - 1)) * 100) / 100;
+  }
+  if (bets.length >= tuning.multiplayerThreshold) {
+    const boosted = tuning.multiplayerMinCrash + Math.random() * tuning.multiplayerMinCrash;
+    return Math.round(Math.max(baseCrashPoint, boosted) * 100) / 100;
+  }
+  return baseCrashPoint;
 }

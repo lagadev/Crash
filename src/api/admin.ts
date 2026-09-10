@@ -227,6 +227,52 @@ adminApi.post("/game/clear-force-crash", async (c) => {
   return ok({ forcedCrashPoint: null });
 });
 
+// ---------------- Economy & game-tuning settings ----------------
+adminApi.get("/settings", async (c) => {
+  const keys = ["joining_bonus", "first_deposit_bonus_percent", "ton_wallet_address", "star_to_ton_rate", "game_tuning"];
+  const rows = await c.env.DB.prepare(
+    `SELECT key, value FROM settings WHERE key IN (${keys.map(() => "?").join(",")})`
+  )
+    .bind(...keys)
+    .all<{ key: string; value: string }>();
+  const map = Object.fromEntries((rows.results ?? []).map((r) => [r.key, r.value]));
+
+  return ok({
+    joiningBonus: Number(map.joining_bonus ?? "0"),
+    firstDepositBonusPercent: Number(map.first_deposit_bonus_percent ?? "0"),
+    tonWalletAddress: map.ton_wallet_address ?? "",
+    starToTonRate: Number(map.star_to_ton_rate ?? "200"),
+    gameTuning: map.game_tuning
+      ? JSON.parse(map.game_tuning)
+      : { bigBetThreshold: 2000, bigBetMaxCrash: 1.5, multiplayerThreshold: 5, multiplayerMinCrash: 3 },
+  });
+});
+
+adminApi.post("/settings", async (c) => {
+  const b = await c.req.json().catch(() => ({}));
+  const entries: [string, string][] = [
+    ["joining_bonus", String(Math.max(0, Math.floor(Number(b.joiningBonus) || 0)))],
+    ["first_deposit_bonus_percent", String(Math.max(0, Number(b.firstDepositBonusPercent) || 0))],
+    ["ton_wallet_address", String(b.tonWalletAddress || "")],
+    ["star_to_ton_rate", String(Math.max(1, Number(b.starToTonRate) || 200))],
+    [
+      "game_tuning",
+      JSON.stringify({
+        bigBetThreshold: Math.max(1, Number(b.gameTuning?.bigBetThreshold) || 2000),
+        bigBetMaxCrash: Math.max(1, Number(b.gameTuning?.bigBetMaxCrash) || 1.5),
+        multiplayerThreshold: Math.max(1, Number(b.gameTuning?.multiplayerThreshold) || 5),
+        multiplayerMinCrash: Math.max(1, Number(b.gameTuning?.multiplayerMinCrash) || 3),
+      }),
+    ],
+  ];
+
+  await c.env.DB.batch(
+    entries.map(([key, value]) => c.env.DB.prepare(`INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`).bind(key, value))
+  );
+
+  return ok({ saved: true });
+});
+
 // ---------------- Bot settings / start message ----------------
 adminApi.get("/bot-settings", async (c) => {
   const row = await c.env.DB.prepare(`SELECT value FROM settings WHERE key = 'start_message'`).first<{

@@ -5,9 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>Crash Game</title>
 <link rel="stylesheet" href="/styles/main.css" />
+<link rel="manifest" href="/tonconnect-manifest.json" id="tonconnect-manifest-tag" />
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
 </head>
-<body>
+<body oncontextmenu="return false">
 <div id="app">
 
   <!-- ================= CRASH ================= -->
@@ -15,8 +17,8 @@
     <div class="topbar">
       <div class="title">Crash</div>
       <div class="balance-pill">
-        <span class="star">&#11088;</span><span id="crash-balance">0</span>
-        <span class="plus" onclick="openDepositSheet()" id="plus-crash"></span>
+        <span class="star-ic" id="crash-star-ic"></span><span id="crash-balance">0</span>
+        <span class="plus" onclick="openDepositSheet()"><span class="icon" data-icon="plus"></span></span>
       </div>
     </div>
 
@@ -33,14 +35,12 @@
           <div class="countdown-label">Place your bet — round starts soon</div>
         </div>
       </div>
-      <div id="stage-flying" style="display:none">
-        <img src="/assets/flying.gif" alt="flying" onerror="this.style.display='none'; document.getElementById('mascot-fallback').style.display='flex'" />
-        <div id="mascot-fallback" class="mascot" style="display:none">&#128640;</div>
+      <div id="stage-flying" style="display:none" class="flight-track">
+        <div class="rocket-visual" id="rocket-visual"></div>
         <div class="crash-multiplier live" id="live-multiplier">1.00x</div>
       </div>
       <div id="stage-crashed" style="display:none">
-        <img src="/assets/crashed.gif" alt="crashed" onerror="this.style.display='none'; document.getElementById('crashed-fallback').style.display='flex'" />
-        <div id="crashed-fallback" style="display:none;font-size:96px;text-align:center">&#128165;</div>
+        <div class="crash-visual" id="crash-visual"></div>
         <div class="crash-multiplier crashed" id="crashed-multiplier">1.00x</div>
       </div>
     </div>
@@ -48,20 +48,18 @@
     <div class="history-row" id="history-row"></div>
 
     <div class="bet-panel">
-      <div class="bet-panel-head"><span>Bet</span><span>Prize</span></div>
+      <div class="bet-panel-head"><span>Bet</span><span>Winnings</span></div>
       <div class="bet-list" id="bet-list">
         <div class="no-bets">No bets yet</div>
       </div>
     </div>
-
-    <div class="about-link" onclick="showModal('modal-about')">About the game</div>
   </section>
 
   <!-- ================= TASK ================= -->
   <section id="tab-task" class="tab-screen">
     <div class="topbar">
       <div class="title">Tasks</div>
-      <div class="balance-pill"><span class="star">&#11088;</span><span id="task-balance">0</span></div>
+      <div class="balance-pill"><span class="star-ic" id="task-star-ic"></span><span id="task-balance">0</span></div>
     </div>
     <div class="card" style="text-align:center;color:var(--muted);font-size:13px">
       Complete tasks below to earn free Stars.
@@ -73,14 +71,14 @@
   <section id="tab-refer" class="tab-screen">
     <div class="topbar">
       <div class="title">Refer &amp; Earn</div>
-      <div class="balance-pill"><span class="star">&#11088;</span><span id="refer-balance">0</span></div>
+      <div class="balance-pill"><span class="star-ic" id="refer-star-ic"></span><span id="refer-balance">0</span></div>
     </div>
 
     <div class="refer-hero">
       <h2>Invite friends and earn<br /><span class="pct">10%</span> from their deposits!</h2>
       <p>Then keep earning from their play — <span class="b">0.5%</span> of your direct friend's turnover,
       <span class="b">0.2%</span> from their friends, and <span class="b">0.1%</span> beyond that.<br/>
-      Credited automatically every 30 minutes (from 0.01 &#11088;).</p>
+      Credited automatically every 30 minutes (from 0.01 <span class="star-ic" data-star-inline></span>).</p>
       <div class="refer-actions">
         <button class="invite-btn" onclick="inviteFriends()"><span class="icon" data-icon="share"></span>Invite</button>
         <button class="icon-btn" onclick="copyReferralLink()"><span class="icon" data-icon="copy"></span></button>
@@ -89,8 +87,8 @@
 
     <div class="stat-grid" style="margin-bottom:14px">
       <div class="stat-box"><div class="n" id="ref-invited">0</div><div class="l">Invited</div></div>
-      <div class="stat-box"><div class="n" id="ref-earned">0</div><div class="l">Earned &#11088;</div></div>
-      <div class="stat-box"><div class="n" id="ref-pending">0</div><div class="l">Pending &#11088;</div></div>
+      <div class="stat-box"><div class="n" id="ref-earned">0</div><div class="l">Earned</div></div>
+      <div class="stat-box"><div class="n" id="ref-pending">0</div><div class="l">Pending</div></div>
     </div>
 
     <div class="card">
@@ -105,7 +103,7 @@
 
     <div class="card" style="text-align:center">
       <div style="color:var(--muted);font-size:13px;font-weight:600">Available Balance</div>
-      <div style="font-size:38px;font-weight:800;margin-top:6px">&#11088; <span id="wallet-balance">0</span></div>
+      <div style="font-size:38px;font-weight:800;margin-top:6px"><span class="star-ic lg" id="wallet-star-ic"></span> <span id="wallet-balance">0</span></div>
       <div style="display:flex;gap:10px;margin-top:16px">
         <button class="invite-btn" style="flex:1" onclick="openDepositSheet()"><span class="icon" data-icon="plus"></span>Deposit</button>
         <button class="invite-btn" style="flex:1;background:var(--card-strong);color:var(--text);box-shadow:none" onclick="document.getElementById('withdraw-card').scrollIntoView({behavior:'smooth'})"><span class="icon" data-icon="withdraw"></span>Withdraw</button>
@@ -115,7 +113,7 @@
     <div class="card" id="withdraw-card">
       <h3>Withdraw</h3>
       <input type="number" id="withdraw-amount" placeholder="Minimum 50 stars" min="50" />
-      <div class="hint">Minimum withdrawal is <b>50 &#11088;</b>. Requests are reviewed and paid to your Telegram account.</div>
+      <div class="hint">Minimum withdrawal is 50 stars. Requests are reviewed and paid to your Telegram account.</div>
       <button class="btn-primary" onclick="submitWithdraw()">Request Withdraw</button>
     </div>
 
@@ -135,7 +133,7 @@
     <div class="topbar"><div class="title">Profile</div></div>
 
     <div class="card" style="text-align:center">
-      <div class="avatar" style="width:64px;height:64px;font-size:22px;margin:0 auto 10px;background:var(--accent-grad)" id="profile-avatar">?</div>
+      <div class="avatar" style="width:72px;height:72px;font-size:24px;margin:0 auto 10px;background:var(--accent-grad)" id="profile-avatar">?</div>
       <div style="font-weight:800;font-size:18px" id="profile-name">—</div>
       <div style="color:var(--muted);font-size:13px" id="profile-username">—</div>
     </div>
@@ -156,9 +154,9 @@
 
     <div class="card">
       <h3>Account Summary</h3>
-      <div class="row-line"><span>Total Deposited</span><span class="v" id="profile-deposited">0 &#11088;</span></div>
-      <div class="row-line"><span>Total Withdrawn</span><span class="v" id="profile-withdrawn">0 &#11088;</span></div>
-      <div class="row-line"><span>Referral Earned</span><span class="v" id="profile-ref-earned">0 &#11088;</span></div>
+      <div class="row-line"><span>Total Deposited</span><span class="v" id="profile-deposited">0</span></div>
+      <div class="row-line"><span>Total Withdrawn</span><span class="v" id="profile-withdrawn">0</span></div>
+      <div class="row-line"><span>Referral Earned</span><span class="v" id="profile-ref-earned">0</span></div>
       <div class="row-line"><span>Invited Friends</span><span class="v" id="profile-invited">0</span></div>
     </div>
   </section>
@@ -181,7 +179,7 @@
   <div class="sheet-backdrop" id="bet-sheet-backdrop">
     <div class="sheet">
       <div class="sheet-head"><h3>New Bet</h3><button class="sheet-close" onclick="closeBetSheet()"><span class="icon" data-icon="close"></span></button></div>
-      <div class="balance-pill" style="margin:0 auto 6px;width:fit-content"><span class="star">&#11088;</span><span id="sheet-balance">0</span></div>
+      <div class="balance-pill" style="margin:0 auto 6px;width:fit-content"><span class="star-ic" id="sheet-star-ic"></span><span id="sheet-balance">0</span></div>
       <div class="amount-hero"><span class="num" id="bet-amount-display">0</span><span class="unit">stars</span></div>
       <div class="quick-amounts">
         <button onclick="addBetAmount(10)">+ 10</button>
@@ -197,26 +195,43 @@
     </div>
   </div>
 
-  <!-- ============ Deposit sheet ============ -->
+  <!-- ============ Deposit sheet (Stars / TON) ============ -->
   <div class="sheet-backdrop" id="deposit-sheet-backdrop">
     <div class="sheet">
-      <div class="sheet-head"><h3>Top up with Telegram Stars</h3><button class="sheet-close" onclick="closeDepositSheet()"><span class="icon" data-icon="close"></span></button></div>
-      <div class="amount-hero"><span class="num" id="deposit-amount-display">100</span><span class="unit">stars</span></div>
-      <div class="quick-amounts"><button onclick="setDepositAmount(100)">100</button><button onclick="setDepositAmount(500)">500</button><button onclick="setDepositAmount(2500)">2,500</button></div>
-      <div class="hint">From 50 to 20,000 stars · paid with Telegram Stars</div>
-      <button class="btn-primary" onclick="confirmDeposit()">Pay with Stars</button>
-    </div>
-  </div>
+      <div class="sheet-head"><h3>Add Balance</h3><button class="sheet-close" onclick="closeDepositSheet()"><span class="icon" data-icon="close"></span></button></div>
 
-  <!-- ============ About modal ============ -->
-  <div class="sheet-backdrop" id="modal-about">
-    <div class="sheet">
-      <div class="sheet-head"><h3>About the game</h3><button class="sheet-close" onclick="closeModal('modal-about')"><span class="icon" data-icon="close"></span></button></div>
-      <p style="color:var(--text);font-size:14px;line-height:1.7">Each round starts with a 5 second betting window.
-      Once it begins, a rocket climbs and the multiplier rises with it. Cash out any time before the rocket crashes
-      to lock in <b>bet × multiplier</b> Stars. Wait too long and the round crashes — any bet still in play is lost.</p>
-      <p style="color:var(--muted);font-size:12px">Every round's crash point is generated from a provably-fair seed,
-      published as a hash before the round starts.</p>
+      <div class="deposit-tabs">
+        <button class="deposit-tab active" id="deposit-tab-stars" onclick="switchDepositTab('stars')"><span class="icon" data-icon="star"></span>Telegram Stars</button>
+        <button class="deposit-tab" id="deposit-tab-ton" onclick="switchDepositTab('ton')"><span class="icon" data-icon="ton"></span>TON / GRAM</button>
+      </div>
+
+      <div class="deposit-pane active" id="deposit-pane-stars">
+        <div class="amount-hero"><span class="num" id="deposit-amount-display">100</span><span class="unit">stars</span></div>
+        <div class="quick-amounts"><button onclick="setDepositAmount(100)">100</button><button onclick="setDepositAmount(500)">500</button><button onclick="setDepositAmount(2500)">2,500</button></div>
+        <div class="hint">From 50 to 20,000 stars · paid with Telegram Stars</div>
+        <button class="btn-primary" onclick="confirmDeposit()">Pay with Stars</button>
+      </div>
+
+      <div class="deposit-pane" id="deposit-pane-ton">
+        <div id="ton-not-connected">
+          <div class="wallet-box">
+            <div class="icon" data-icon="ton" style="color:#0098ea;margin:0 auto 8px;width:32px;height:32px"></div>
+            <div style="font-weight:700;font-size:14px">No wallet connected</div>
+            <div style="color:var(--muted);font-size:12px;margin-top:4px">Connect your TON wallet to deposit GRAM/TON</div>
+          </div>
+          <button class="wallet-connect-btn" onclick="connectTonWallet()"><span class="icon" data-icon="wallet"></span>Connect Wallet</button>
+        </div>
+        <div id="ton-connected" style="display:none">
+          <div style="text-align:center;margin-bottom:14px">
+            <span class="wallet-connected-pill"><span class="icon" data-icon="walletcheck"></span><span id="ton-address-short">—</span></span>
+          </div>
+          <div class="amount-hero"><span class="num" id="ton-amount-display">100</span><span class="unit">stars</span></div>
+          <div class="quick-amounts"><button onclick="setTonAmount(100)">100</button><button onclick="setTonAmount(500)">500</button><button onclick="setTonAmount(2500)">2,500</button></div>
+          <div class="rate-hint" id="ton-rate-hint">—</div>
+          <button class="btn-primary" onclick="payWithTon()">Pay &amp; Deposit</button>
+          <button class="btn-ghost" style="width:100%;justify-content:center;margin-top:10px" onclick="disconnectTonWallet()">Disconnect</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -225,11 +240,13 @@
 
 <script src="/src/icons.js"></script>
 <script>
-// Fill every [data-icon] placeholder with its SVG from icons.js (shared with the Admin Panel).
 document.querySelectorAll('[data-icon]').forEach((el) => { el.innerHTML = (window.ICONS || {})[el.dataset.icon] || ''; });
+document.querySelectorAll('.star-ic').forEach((el) => { el.outerHTML = window.starTag ? window.starTag(el.className.replace('star-ic','').trim()) : ''; });
+document.querySelectorAll('[data-star-inline]').forEach((el) => { el.outerHTML = window.starTag ? window.starTag() : ''; });
 </script>
 <script src="/src/services/api.js"></script>
 <script src="/src/services/socket.js"></script>
+<script src="/src/services/ton.js"></script>
 <script src="/src/app.js"></script>
 </body>
 </html>

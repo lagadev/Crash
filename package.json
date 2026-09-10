@@ -5,14 +5,15 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:migrate": "wrangler d1 execute crash_game_db --file=./migrations/0001_initial.sql && wrangler d1 execute crash_game_db --file=./migrations/0002_admin_tasks.sql",
-    "db:migrate:remote": "wrangler d1 execute crash_game_db --remote --file=./migrations/0001_initial.sql && wrangler d1 execute crash_game_db --remote --file=./migrations/0002_admin_tasks.sql",
-    "build:frontend": "cd frontend && npm install && npm run build"
+    "db:migrate": "wrangler d1 execute crash_game_db --file=./migrations/0001_initial.sql && wrangler d1 execute crash_game_db --file=./migrations/0002_admin_tasks.sql && wrangler d1 execute crash_game_db --file=./migrations/0003_economy_ton.sql",
+    "db:migrate:remote": "wrangler d1 execute crash_game_db --remote --file=./migrations/0001_initial.sql && wrangler d1 execute crash_game_db --remote --file=./migrations/0002_admin_tasks.sql && wrangler d1 execute crash_game_db --remote --file=./migrations/0003_economy_ton.sql",
+    "minify": "node scripts/minify-frontend.js"
   },
   "devDependencies": {
     "typescript": "^5.5.4",
     "wrangler": "^3.78.0",
-    "@cloudflare/workers-types": "^4.20240924.0"
+    "@cloudflare/workers-types": "^4.20240924.0",
+    "esbuild": "^0.23.1"
   },
   "dependencies": {
     "hono": "^4.6.3"

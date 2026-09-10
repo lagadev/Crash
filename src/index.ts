@@ -7,6 +7,7 @@ import { gameApi } from "./api/game";
 import { botApi } from "./api/bot";
 import { adminApi } from "./api/admin";
 import { tasksApi } from "./api/tasks";
+import { tonApi } from "./api/ton";
 
 export { CrashRoom } from "./game/CrashRoom";
 
@@ -18,6 +19,7 @@ app.route("/api/users", usersApi);
 app.route("/api/wallet", walletApi);
 app.route("/api/game", gameApi);
 app.route("/api/tasks", tasksApi);
+app.route("/api/ton", tonApi);
 app.route("/api/admin", adminApi);
 app.route("/telegram", botApi);
 

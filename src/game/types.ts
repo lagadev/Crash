@@ -8,7 +8,6 @@ export interface PlayerBet {
   autoCashoutAt: number | null;
   cashedOutAt: number | null; // multiplier at which they cashed out, null = still in / lost
   status: "placed" | "won" | "lost";
-  prizeEmoji: string;
 }
 
 export interface RoundState {

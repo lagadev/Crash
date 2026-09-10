@@ -96,13 +96,23 @@ button { font-family: inherit; }
 
 /* ---------- Crash stage ---------- */
 .stage {
-  height: 280px; display: flex; align-items: center; justify-content: center; position: relative;
-  background: var(--card-grad); border: 1px solid var(--border); border-radius: var(--radius);
+  height: 300px; display: flex; align-items: center; justify-content: center; position: relative;
+  background: radial-gradient(120% 100% at 50% 100%, rgba(76,125,255,.16), transparent 60%), var(--card-grad);
+  border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
   margin-bottom: 12px; box-shadow: var(--shadow);
+}
+.stage::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(1.5px 1.5px at 15% 20%, rgba(255,255,255,.6), transparent),
+    radial-gradient(1.5px 1.5px at 75% 15%, rgba(255,255,255,.5), transparent),
+    radial-gradient(1px 1px at 40% 70%, rgba(255,255,255,.4), transparent),
+    radial-gradient(1px 1px at 85% 55%, rgba(255,255,255,.4), transparent),
+    radial-gradient(1px 1px at 25% 85%, rgba(255,255,255,.35), transparent);
 }
 .connecting-overlay {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 12px; background: rgba(10,12,20,.75); border-radius: var(--radius); z-index: 5; backdrop-filter: blur(4px);
+  gap: 12px; background: rgba(10,12,20,.78); border-radius: var(--radius); z-index: 5; backdrop-filter: blur(4px);
 }
 .connecting-overlay.hidden { display: none; }
 .spinner {
@@ -116,12 +126,38 @@ button { font-family: inherit; }
 
 .countdown-num { font-size: 88px; font-weight: 800; color: #fff; line-height: 1; text-shadow: 0 0 30px rgba(76,125,255,.4); }
 .countdown-label { color: var(--muted); font-size: 13px; margin-top: 4px; text-align: center; }
-.mascot { font-size: 96px; animation: float 1.2s ease-in-out infinite; filter: drop-shadow(0 10px 20px rgba(76,125,255,.35)); }
-.crash-multiplier { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 42px; font-weight: 800; }
+
+/* The rocket climbs at a 45-degree diagonal, like it's launching up-and-away
+   (not straight up) - matching the reference screenshots. Uses a CSS
+   background-image (never an <img>) specifically so long-pressing it in
+   Telegram's in-app browser can't surface a raw file link/"copy link" menu. */
+.flight-track { position: relative; width: 100%; height: 100%; }
+.rocket-visual {
+  position: absolute; width: 120px; height: 120px; left: 18%; bottom: 14%;
+  background-size: contain; background-position: center; background-repeat: no-repeat;
+  transform: rotate(-45deg); transform-origin: center;
+  animation: ascend 2.2s ease-in-out infinite;
+  -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; pointer-events: none;
+}
+.rocket-visual.emoji-fallback {
+  display: flex; align-items: center; justify-content: center; font-size: 64px; transform: rotate(45deg);
+  filter: drop-shadow(0 10px 20px rgba(76,125,255,.4));
+}
+.rocket-visual.emoji-fallback span { display: inline-block; transform: rotate(0deg); }
+@keyframes ascend {
+  0% { transform: rotate(-45deg) translate(0, 0); }
+  50% { transform: rotate(-45deg) translate(28px, -28px); }
+  100% { transform: rotate(-45deg) translate(0, 0); }
+}
+.crash-visual {
+  position: absolute; inset: 0; background-size: contain; background-position: center 55%; background-repeat: no-repeat;
+  -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; pointer-events: none;
+}
+.crash-visual.emoji-fallback { display: flex; align-items: center; justify-content: center; font-size: 88px; }
+
+.crash-multiplier { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 42px; font-weight: 800; z-index: 2; }
 .crash-multiplier.live { color: #fff; text-shadow: 0 0 24px rgba(76,125,255,.5); }
 .crash-multiplier.crashed { color: var(--red); text-shadow: 0 0 24px rgba(255,85,102,.5); }
-@keyframes float { 0%, 100% { transform: translateY(0) rotate(-8deg); } 50% { transform: translateY(-18px) rotate(-4deg); } }
-.stage img { max-height: 220px; }
 
 .history-row { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 14px; scrollbar-width: none; }
 .history-row::-webkit-scrollbar { display: none; }
@@ -142,22 +178,29 @@ button { font-family: inherit; }
 .bet-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; max-height: 280px; }
 .bet-row {
   display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 14px;
-  background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.05);
+  background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.05); transition: background .3s ease;
 }
 .avatar {
   width: 38px; height: 38px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
   font-weight: 800; color: #fff; font-size: 14px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,.3);
+  overflow: hidden; background-size: cover; background-position: center;
 }
+.avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 999px; -webkit-touch-callout: none; user-select: none; }
 .bet-row .who { flex: 1; min-width: 0; }
-.bet-row .who .name { font-weight: 700; font-size: 14px; }
+.bet-row .who .name { font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bet-row .who .amt { color: var(--gold); font-size: 12px; display: flex; align-items: center; gap: 4px; margin-top: 1px; }
 .bet-row .mult { font-weight: 800; font-size: 13px; margin-right: 4px; }
 .bet-row .mult.win { color: var(--green); }
 .bet-row .mult.lost { color: var(--red); }
 .bet-row .mult.pending { color: var(--muted); }
-.bet-row .prize { font-size: 18px; }
+.bet-row .grow-col { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; min-width: 64px; }
+.bet-row .grow-amt {
+  display: flex; align-items: center; gap: 4px; font-weight: 800; font-size: 13px; color: var(--gold);
+  transition: transform .15s ease;
+}
+.bet-row.win-flash { background: rgba(34,197,94,.1); border-color: rgba(34,197,94,.25); }
+.bet-row.lost-flash { background: rgba(255,85,102,.08); border-color: rgba(255,85,102,.2); }
 .no-bets { text-align: center; color: var(--muted); padding: 30px 0; font-size: 14px; }
-.about-link { text-align: center; color: var(--muted); font-size: 13px; margin: 14px 0 6px; text-decoration: underline; cursor: pointer; }
 
 /* ---------- Bottom action bar ---------- */
 .bottom-bar { position: fixed; left: 0; right: 0; bottom: 68px; max-width: 480px; margin: 0 auto; padding: 0 16px; z-index: 30; }
@@ -262,3 +305,30 @@ input[type=number], input[type=text] {
 
 .toast { position: fixed; bottom: 140px; left: 50%; transform: translateX(-50%); background: #1c2030; color: #fff; padding: 10px 18px; border-radius: 12px; font-size: 14px; z-index: 100; opacity: 0; pointer-events: none; transition: opacity .2s ease; box-shadow: var(--shadow); }
 .toast.show { opacity: 1; }
+
+/* ---------- Inline star icon (used everywhere a balance is shown) ---------- */
+.star-ic { display: inline-flex; vertical-align: -3px; }
+.star-ic svg, .star-ic img { width: 16px; height: 16px; display: block; }
+.star-ic.lg svg, .star-ic.lg img { width: 22px; height: 22px; }
+.star-ic.xl svg, .star-ic.xl img { width: 40px; height: 40px; }
+
+/* ---------- Deposit sheet: Stars / TON tabs ---------- */
+.deposit-tabs { display: flex; gap: 8px; margin-bottom: 16px; background: rgba(255,255,255,.04); padding: 4px; border-radius: 14px; }
+.deposit-tab { flex: 1; text-align: center; padding: 10px; border-radius: 11px; font-weight: 700; font-size: 13px; color: var(--muted); cursor: pointer; background: none; border: none; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.deposit-tab.active { background: var(--accent-grad); color: #fff; box-shadow: 0 4px 12px rgba(76,125,255,.3); }
+.deposit-pane { display: none; }
+.deposit-pane.active { display: block; }
+.wallet-box { background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 16px; padding: 16px; text-align: center; margin-bottom: 14px; }
+.wallet-box .addr { font-size: 12px; color: var(--muted); word-break: break-all; margin-top: 6px; }
+.wallet-connect-btn {
+  background: linear-gradient(135deg,#0098ea,#00c2ff); color: #fff; border: none; border-radius: 14px;
+  padding: 14px; font-weight: 800; font-size: 15px; width: 100%; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 8px 20px rgba(0,152,234,.3);
+}
+.wallet-connected-pill { display: inline-flex; align-items: center; gap: 8px; background: rgba(0,152,234,.14); color: #4dc8ff; border: 1px solid rgba(0,152,234,.3); padding: 8px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.rate-hint { text-align: center; color: var(--muted); font-size: 12px; margin: 10px 0; }
+
+/* ---------- Micro-interactions for that extra premium feel ---------- */
+.menu-btn, .invite-btn, .task-btn, .btn-primary, .icon-btn, .deposit-tab, .tab-item { -webkit-tap-highlight-color: transparent; }
+.card, .stat-box, .stage, .bet-panel, .refer-hero { transition: transform .15s ease; }
+::selection { background: rgba(76,125,255,.3); }

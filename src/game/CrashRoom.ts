@@ -1,10 +1,10 @@
 import type { Env } from "../env";
 import {
   addBet,
+  applyGameTuning,
   cashoutBet,
   freshRound,
   publicRoundView,
-  pickPrizeEmoji,
   settleLosers,
   tickRound,
   CRASHED_MS,
@@ -13,6 +13,7 @@ import {
   TICK_WAITING_MS,
   WAITING_MS,
   HISTORY_LIMIT,
+  type GameTuning,
 } from "./engine";
 import { deriveCrashPoint, generateServerSeed } from "./multiplier";
 import type { PlayerBet, RoundState } from "./types";
@@ -32,7 +33,9 @@ export class CrashRoom implements DurableObject {
   private env: Env;
   private sessions: Session[] = [];
   private round: RoundState;
-  private crashPoint = 1.0;
+  private crashPoint = 1.0; // finalized once betting closes (see resolveCrashPoint)
+  private baseCrashPoint = 1.0; // provably-fair draw, before "gamer logic" tuning
+  private forcedCrashPoint: number | null = null; // admin override for this round, if any
   private serverSeed = "";
   private loopRunning = false;
   private roundIdCounter = 0;
@@ -149,7 +152,6 @@ export class CrashRoom implements DurableObject {
       autoCashoutAt,
       cashedOutAt: null,
       status: "placed",
-      prizeEmoji: pickPrizeEmoji(),
     };
 
     if (!addBet(this.round, bet)) {
@@ -261,6 +263,7 @@ export class CrashRoom implements DurableObject {
       this.broadcast({ type: "countdown", payload: { countdownSeconds: Math.ceil(this.round.countdownMs / 1000) } });
 
       if (this.round.countdownMs <= 0) {
+        await this.resolveCrashPoint();
         this.round.phase = "running";
         this.round.startedAt = now;
         this.broadcast({ type: "round_start", payload: publicRoundView(this.round) });
@@ -312,13 +315,17 @@ export class CrashRoom implements DurableObject {
       this.roundIdCounter,
       Number(this.env.HOUSE_EDGE || "0.03")
     );
+    this.baseCrashPoint = crashPoint;
+    this.crashPoint = crashPoint; // provisional; finalized in resolveCrashPoint() once betting closes
 
     // Admin override: force this round to crash at a specific multiplier.
+    // Read now (fairness commitment is published up front) but only *applied*
+    // once betting closes, in resolveCrashPoint().
     const control = await this.env.DB.prepare(
       `SELECT forced_crash_point FROM game_control WHERE id = 1`
     ).first<{ forced_crash_point: number | null }>();
-    this.crashPoint = control?.forced_crash_point ? control.forced_crash_point : crashPoint;
-    if (control?.forced_crash_point) {
+    this.forcedCrashPoint = control?.forced_crash_point ?? null;
+    if (this.forcedCrashPoint !== null) {
       await this.env.DB.prepare(`UPDATE game_control SET forced_crash_point = NULL WHERE id = 1`).run();
     }
 
@@ -335,6 +342,44 @@ export class CrashRoom implements DurableObject {
       .catch(() => {});
 
     this.broadcast({ type: "state", payload: publicRoundView(this.round) });
+  }
+
+  /**
+   * Called the instant betting closes (all of this round's bets are now
+   * known). Applies the admin's forced override if set, otherwise runs the
+   * "gamer logic" tuning (lots of players -> longer round; one big bet ->
+   * fast crash) on top of the provably-fair base draw, then persists the
+   * final number so it matches what actually gets broadcast.
+   */
+  private async resolveCrashPoint() {
+    if (this.forcedCrashPoint !== null) {
+      this.crashPoint = this.forcedCrashPoint;
+    } else {
+      const tuning = await this.loadGameTuning();
+      this.crashPoint = applyGameTuning(this.baseCrashPoint, this.round.bets, tuning);
+    }
+    await this.env.DB.prepare(`UPDATE rounds SET crash_point = ? WHERE id = ?`)
+      .bind(this.crashPoint, this.round.roundId)
+      .run()
+      .catch(() => {});
+  }
+
+  private async loadGameTuning(): Promise<GameTuning> {
+    const row = await this.env.DB.prepare(`SELECT value FROM settings WHERE key = 'game_tuning'`).first<{
+      value: string;
+    }>();
+    const defaults: GameTuning = {
+      bigBetThreshold: 2000,
+      bigBetMaxCrash: 1.5,
+      multiplayerThreshold: 5,
+      multiplayerMinCrash: 3,
+    };
+    if (!row?.value) return defaults;
+    try {
+      return { ...defaults, ...JSON.parse(row.value) };
+    } catch {
+      return defaults;
+    }
   }
 
   private async finishRound(now: number) {

@@ -8,4 +8,5 @@ export interface Env {
   BOT_USERNAME: string;
   MIN_WITHDRAW_STARS: string;
   HOUSE_EDGE: string;
+  TON_API_KEY?: string;
 }

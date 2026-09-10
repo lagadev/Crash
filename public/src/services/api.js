@@ -32,6 +32,9 @@ const API = (() => {
     tasks: () => request("/tasks"),
     startTask: (id) => request(`/tasks/${id}/start`, { method: "POST" }),
     claimTask: (id) => request(`/tasks/${id}/claim`, { method: "POST" }),
+    tonConfig: () => request("/ton/config"),
+    tonCreateIntent: (stars) => request("/ton/create-intent", { method: "POST", body: { stars } }),
+    tonVerifyIntent: () => request("/ton/verify-intent", { method: "POST" }),
     wsUrl: () => {
       const proto = location.protocol === "https:" ? "wss:" : "ws:";
       return `${proto}//${location.host}/api/game/ws?initData=${encodeURIComponent(initData())}`;

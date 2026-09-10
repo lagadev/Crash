@@ -30,6 +30,7 @@
     <button class="nav-item" data-view="view-tasks" onclick="showView('view-tasks')"><span class="icon" data-icon="task"></span>Tasks</button>
     <button class="nav-item" data-view="view-game" onclick="showView('view-game')"><span class="icon" data-icon="game"></span>Game</button>
     <button class="nav-item" data-view="view-bot" onclick="showView('view-bot')"><span class="icon" data-icon="bot"></span>Bot &amp; Broadcast</button>
+    <button class="nav-item" data-view="view-settings" onclick="showView('view-settings')"><span class="icon" data-icon="settings"></span>Settings</button>
     <div class="spacer"></div>
     <button class="nav-item" onclick="doLogout()"><span class="icon" data-icon="logout"></span>Logout</button>
   </div>
@@ -135,6 +136,42 @@
         <button class="btn gold" onclick="sendBroadcast()">Send Broadcast</button>
         <div id="bcast-result" style="margin-top:10px;color:var(--muted);font-size:13px"></div>
       </div>
+    </div>
+
+    <!-- ---------------- Settings ---------------- -->
+    <div id="view-settings" class="view">
+      <div class="view-head"><div><h1>Settings</h1><p>Bonuses, TON wallet, and crash-behaviour tuning</p></div></div>
+
+      <div class="panel">
+        <h3>Bonuses</h3>
+        <div class="field-row">
+          <div class="field"><label>Joining Bonus (stars, credited on signup)</label><input type="number" id="set-joining-bonus" min="0" /></div>
+          <div class="field"><label>First Deposit Bonus (%)</label><input type="number" id="set-first-deposit-pct" min="0" /></div>
+        </div>
+        <p style="color:var(--muted);font-size:12px;margin:0 0 14px">First Deposit Bonus is extra stars credited to a user themselves the first time they deposit (e.g. 10% means depositing 100 gives 110). This is separate from the referrer's 10% first-deposit reward, which always applies.</p>
+      </div>
+
+      <div class="panel">
+        <h3>TON / GRAM Deposits</h3>
+        <div class="field"><label>House TON Wallet Address</label><input type="text" id="set-ton-address" placeholder="UQ…" /></div>
+        <div class="field"><label>Star-to-TON Rate (stars per 1 TON)</label><input type="number" id="set-ton-rate" min="1" /></div>
+        <p style="color:var(--muted);font-size:12px;margin:0">Deposits are verified via the TonCenter API by matching a uniquely-generated payment amount - see the README for details and its limitations before relying on this for real funds.</p>
+      </div>
+
+      <div class="panel">
+        <h3>Game Tuning ("gamer logic")</h3>
+        <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Nudges the provably-fair crash point using the current round's bets: a lot of players queued up biases toward a longer round; any single very large bet biases toward a fast crash.</p>
+        <div class="field-row">
+          <div class="field"><label>Big Bet Threshold (stars)</label><input type="number" id="set-big-bet-threshold" min="1" /></div>
+          <div class="field"><label>Big Bet Max Crash (x)</label><input type="number" id="set-big-bet-max-crash" min="1" step="0.01" /></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Multiplayer Threshold (players)</label><input type="number" id="set-mp-threshold" min="1" /></div>
+          <div class="field"><label>Multiplayer Min Crash (x)</label><input type="number" id="set-mp-min-crash" min="1" step="0.01" /></div>
+        </div>
+      </div>
+
+      <button class="btn primary" onclick="saveSettings()">Save All Settings</button>
     </div>
 
   </div>

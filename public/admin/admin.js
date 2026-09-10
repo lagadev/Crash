@@ -79,6 +79,7 @@ function showView(id) {
   if (id === "view-tasks") loadTasks();
   if (id === "view-game") loadGame();
   if (id === "view-bot") loadBotSettings();
+  if (id === "view-settings") loadSettings();
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove("active"); }
@@ -407,6 +408,44 @@ async function sendBroadcast() {
     const res = await adminRequest("/broadcast", { method: "POST", body });
     document.getElementById("bcast-result").textContent = `Sent to ${res.sent}/${res.total} users (${res.failed} failed)`;
     toast("Broadcast sent");
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+// ---------------- Settings (bonuses / TON / game tuning) ----------------
+async function loadSettings() {
+  try {
+    const s = await adminRequest("/settings");
+    document.getElementById("set-joining-bonus").value = s.joiningBonus;
+    document.getElementById("set-first-deposit-pct").value = s.firstDepositBonusPercent;
+    document.getElementById("set-ton-address").value = s.tonWalletAddress;
+    document.getElementById("set-ton-rate").value = s.starToTonRate;
+    document.getElementById("set-big-bet-threshold").value = s.gameTuning.bigBetThreshold;
+    document.getElementById("set-big-bet-max-crash").value = s.gameTuning.bigBetMaxCrash;
+    document.getElementById("set-mp-threshold").value = s.gameTuning.multiplayerThreshold;
+    document.getElementById("set-mp-min-crash").value = s.gameTuning.multiplayerMinCrash;
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+async function saveSettings() {
+  const body = {
+    joiningBonus: Number(document.getElementById("set-joining-bonus").value) || 0,
+    firstDepositBonusPercent: Number(document.getElementById("set-first-deposit-pct").value) || 0,
+    tonWalletAddress: document.getElementById("set-ton-address").value.trim(),
+    starToTonRate: Number(document.getElementById("set-ton-rate").value) || 200,
+    gameTuning: {
+      bigBetThreshold: Number(document.getElementById("set-big-bet-threshold").value) || 2000,
+      bigBetMaxCrash: Number(document.getElementById("set-big-bet-max-crash").value) || 1.5,
+      multiplayerThreshold: Number(document.getElementById("set-mp-threshold").value) || 5,
+      multiplayerMinCrash: Number(document.getElementById("set-mp-min-crash").value) || 3,
+    },
+  };
+  try {
+    await adminRequest("/settings", { method: "POST", body });
+    toast("Settings saved");
   } catch (e) {
     toast(e.message);
   }
