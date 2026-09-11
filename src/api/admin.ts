@@ -229,7 +229,15 @@ adminApi.post("/game/clear-force-crash", async (c) => {
 
 // ---------------- Economy & game-tuning settings ----------------
 adminApi.get("/settings", async (c) => {
-  const keys = ["joining_bonus", "first_deposit_bonus_percent", "ton_wallet_address", "star_to_ton_rate", "game_tuning"];
+  const keys = [
+    "joining_bonus",
+    "first_deposit_bonus_percent",
+    "ton_wallet_address",
+    "star_to_ton_rate",
+    "game_tuning",
+    "referral_deposit_bonus_percent",
+    "referral_flat_bonus",
+  ];
   const rows = await c.env.DB.prepare(
     `SELECT key, value FROM settings WHERE key IN (${keys.map(() => "?").join(",")})`
   )
@@ -242,6 +250,8 @@ adminApi.get("/settings", async (c) => {
     firstDepositBonusPercent: Number(map.first_deposit_bonus_percent ?? "0"),
     tonWalletAddress: map.ton_wallet_address ?? "",
     starToTonRate: Number(map.star_to_ton_rate ?? "200"),
+    referralDepositBonusPercent: Number(map.referral_deposit_bonus_percent ?? "10"),
+    referralFlatBonus: Number(map.referral_flat_bonus ?? "5"),
     gameTuning: map.game_tuning
       ? JSON.parse(map.game_tuning)
       : { bigBetThreshold: 2000, bigBetMaxCrash: 1.5, multiplayerThreshold: 5, multiplayerMinCrash: 3 },
@@ -255,6 +265,8 @@ adminApi.post("/settings", async (c) => {
     ["first_deposit_bonus_percent", String(Math.max(0, Number(b.firstDepositBonusPercent) || 0))],
     ["ton_wallet_address", String(b.tonWalletAddress || "")],
     ["star_to_ton_rate", String(Math.max(1, Number(b.starToTonRate) || 200))],
+    ["referral_deposit_bonus_percent", String(Math.max(0, Number(b.referralDepositBonusPercent) || 10))],
+    ["referral_flat_bonus", String(Math.max(0, Math.floor(Number(b.referralFlatBonus) || 0)))],
     [
       "game_tuning",
       JSON.stringify({

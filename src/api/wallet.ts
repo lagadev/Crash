@@ -76,11 +76,18 @@ walletApi.get("/referral", async (c) => {
     .bind(user.id)
     .first<{ invited_count: number; referral_earned: number; referral_pending: number }>();
 
+  const settingsRows = await c.env.DB.prepare(
+    `SELECT key, value FROM settings WHERE key IN ('referral_deposit_bonus_percent', 'referral_flat_bonus')`
+  ).all<{ key: string; value: string }>();
+  const settingsMap = Object.fromEntries((settingsRows.results ?? []).map((r) => [r.key, r.value]));
+
   return ok({
     invited: row?.invited_count ?? 0,
     earned: row?.referral_earned ?? 0,
     pending: row?.referral_pending ?? 0,
     link: `https://t.me/${c.env.BOT_USERNAME}?start=ref_${user.id}`,
+    depositBonusPercent: Number(settingsMap.referral_deposit_bonus_percent ?? "10"),
+    flatBonus: Number(settingsMap.referral_flat_bonus ?? "5"),
   });
 });
 

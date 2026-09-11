@@ -3,10 +3,77 @@
 // ============================================================
 
 const tg = window.Telegram?.WebApp;
-tg?.ready();
-tg?.expand();
-tg?.setHeaderColor?.("#0a0c14");
-tg?.setBackgroundColor?.("#0a0c14");
+
+// ---------------- Telegram-only gate ----------------
+// Per spec: index.html itself stays essentially empty. If this page is
+// opened outside Telegram (no initData at all - a real Telegram launch
+// always provides it), show a full-screen error animation instead of ever
+// building the game UI.
+function isRunningInsideTelegram() {
+  return Boolean(tg && typeof tg.initData === "string" && tg.initData.length > 0);
+}
+
+function renderTelegramOnlyError() {
+  document.getElementById("app").innerHTML = `
+    <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center">
+      <div id="error-lottie" style="width:160px;height:160px"></div>
+      <div style="font-size:18px;font-weight:800;margin-top:8px">Open this in Telegram</div>
+      <div style="color:var(--muted);font-size:14px;margin-top:6px;max-width:280px">
+        This app only works as a Telegram Mini App. Please open it from the bot in Telegram.
+      </div>
+    </div>`;
+  loadLottieOrFallback("error-lottie", "/assets/error.json", "\u26a0\ufe0f");
+}
+
+if (!isRunningInsideTelegram()) {
+  renderTelegramOnlyError();
+} else {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor?.("#0a0c14");
+  tg.setBackgroundColor?.("#0a0c14");
+  document.getElementById("app").innerHTML = appShellHtml();
+  runIconFills();
+  boot();
+}
+
+function runIconFills() {
+  document.querySelectorAll("[data-icon]").forEach((el) => {
+    el.innerHTML = (window.ICONS || {})[el.dataset.icon] || "";
+  });
+  document.querySelectorAll(".star-ic").forEach((el) => {
+    el.outerHTML = window.starTag ? window.starTag(el.className.replace("star-ic", "").trim()) : "";
+  });
+  document.querySelectorAll("[data-star-inline]").forEach((el) => {
+    el.outerHTML = window.starTag ? window.starTag() : "";
+  });
+}
+
+/** Loads a Lottie JSON animation into `containerId`; falls back to a plain emoji glyph if it's missing. */
+function loadLottieOrFallback(containerId, jsonPath, emojiFallback, loop = true) {
+  const el = document.getElementById(containerId);
+  if (!el || !window.lottie) {
+    if (el) el.textContent = emojiFallback;
+    return null;
+  }
+  let anim;
+  try {
+    anim = window.lottie.loadAnimation({
+      container: el,
+      renderer: "svg",
+      loop,
+      autoplay: true,
+      path: jsonPath,
+    });
+    anim.addEventListener("data_failed", () => {
+      el.innerHTML = "";
+      el.textContent = emojiFallback;
+    });
+  } catch {
+    el.textContent = emojiFallback;
+  }
+  return anim;
+}
 
 const state = {
   balance: 0,
@@ -35,7 +102,9 @@ function showTab(id) {
   if (id === "tab-crash" && !state.socketStarted) {
     state.socketStarted = true;
     setupStageVisuals();
+    setupFallingStars();
     startGame();
+    maybeShowHowItWorks();
   }
   if (id === "tab-task") loadTasks();
   if (id === "tab-refer") loadReferral();
@@ -48,6 +117,16 @@ function toast(msg) {
   t.textContent = msg;
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+// ---------------- How it works (first-launch onboarding) ----------------
+function maybeShowHowItWorks() {
+  if (localStorage.getItem("crashHowToSeen")) return;
+  document.getElementById("how-it-works-backdrop").classList.add("active");
+}
+function closeHowItWorks() {
+  localStorage.setItem("crashHowToSeen", "1");
+  document.getElementById("how-it-works-backdrop").classList.remove("active");
 }
 
 // ---------------- Boot ----------------
@@ -63,7 +142,6 @@ async function boot() {
     toast("Could not connect to server");
   }
 }
-boot();
 
 function refreshBalanceUI() {
   ["crash-balance", "task-balance", "refer-balance", "wallet-balance"].forEach((id) => {
@@ -181,6 +259,8 @@ async function loadReferral() {
     document.getElementById("ref-invited").textContent = r.invited;
     document.getElementById("ref-earned").textContent = r.earned;
     document.getElementById("ref-pending").textContent = r.pending.toFixed ? r.pending.toFixed(2) : r.pending;
+    document.getElementById("refer-pct-badge").textContent = `${r.depositBonusPercent}%`;
+    document.getElementById("refer-flat-badge").innerHTML = `${r.flatBonus} ${starTag()}`;
     state.referralLink = r.link;
   } catch (e) {
     toast("Failed to load referral info");
@@ -294,8 +374,15 @@ function switchDepositTab(which) {
 function setDepositAmount(v) {
   state.depositAmount = v;
   document.getElementById("deposit-amount-display").textContent = v;
+  document.getElementById("deposit-amount-input").value = "";
+}
+function onDepositAmountTyped(v) {
+  const n = Math.max(0, Math.min(20000, Math.floor(Number(v) || 0)));
+  state.depositAmount = n;
+  document.getElementById("deposit-amount-display").textContent = n;
 }
 async function confirmDeposit() {
+  if (state.depositAmount < 50) return toast("Minimum deposit is 50 stars");
   try {
     const { invoiceLink } = await API.deposit(state.depositAmount);
     closeDepositSheet();
@@ -352,6 +439,13 @@ async function disconnectTonWallet() {
 function setTonAmount(v) {
   state.tonAmount = v;
   document.getElementById("ton-amount-display").textContent = v;
+  document.getElementById("ton-amount-input").value = "";
+  updateTonRateHint();
+}
+function onTonAmountTyped(v) {
+  const n = Math.max(0, Math.min(20000, Math.floor(Number(v) || 0)));
+  state.tonAmount = n;
+  document.getElementById("ton-amount-display").textContent = n;
   updateTonRateHint();
 }
 function updateTonRateHint() {
@@ -363,6 +457,7 @@ function updateTonRateHint() {
 }
 async function payWithTon() {
   if (!TonWallet.address) return toast("Connect your wallet first");
+  if (state.tonAmount < 50) return toast("Minimum deposit is 50 stars");
   try {
     const intent = await API.tonCreateIntent(state.tonAmount);
     toast("Confirm the payment in your wallet…");
@@ -393,30 +488,54 @@ async function pollTonVerify(attempt = 0) {
 // CRASH GAME
 // ================================================================
 
-/** Preloads flying.gif / crashed.gif; falls back to a CSS emoji animation if missing. */
+/**
+ * Preloads flying.json / crashed.json Lottie animations (preferred).
+ * Falls back to flying.gif/crashed.gif if present (kept for backward
+ * compatibility), and finally to a built-in emoji animation if neither
+ * asset exists - so the game always renders something.
+ */
 function setupStageVisuals() {
   const rocket = document.getElementById("rocket-visual");
   const crash = document.getElementById("crash-visual");
 
-  const flyingImg = new Image();
-  flyingImg.onload = () => {
-    rocket.style.backgroundImage = `url('/assets/flying.gif')`;
-  };
-  flyingImg.onerror = () => {
-    rocket.classList.add("emoji-fallback");
-    rocket.innerHTML = `<span>\ud83d\ude80</span>`;
-  };
-  flyingImg.src = "/assets/flying.gif";
+  fetch("/assets/flying.json", { method: "HEAD" })
+    .then((r) => {
+      if (!r.ok) throw new Error("missing");
+      loadLottieOrFallback("rocket-visual", "/assets/flying.json", "\ud83d\ude80");
+    })
+    .catch(() => tryGifThenEmoji(rocket, "/assets/flying.gif", "\ud83d\ude80"));
 
-  const crashedImg = new Image();
-  crashedImg.onload = () => {
-    crash.style.backgroundImage = `url('/assets/crashed.gif')`;
-  };
-  crashedImg.onerror = () => {
-    crash.classList.add("emoji-fallback");
-    crash.textContent = "\ud83d\udca5";
-  };
-  crashedImg.src = "/assets/crashed.gif";
+  fetch("/assets/crashed.json", { method: "HEAD" })
+    .then((r) => {
+      if (!r.ok) throw new Error("missing");
+      loadLottieOrFallback("crash-visual", "/assets/crashed.json", "\ud83d\udca5");
+    })
+    .catch(() => tryGifThenEmoji(crash, "/assets/crashed.gif", "\ud83d\udca5"));
+}
+
+function tryGifThenEmoji(el, gifPath, emoji) {
+  const img = new Image();
+  img.onload = () => { el.style.backgroundImage = `url('${gifPath}')`; };
+  img.onerror = () => { el.classList.add("emoji-fallback"); el.innerHTML = `<span>${emoji}</span>`; };
+  img.src = gifPath;
+}
+
+/** Small stars falling diagonally (45°) behind the rocket, like a meteor shower. Purely decorative/CSS-driven. */
+function setupFallingStars() {
+  const layer = document.getElementById("falling-stars");
+  if (!layer || layer.dataset.built) return;
+  layer.dataset.built = "1";
+  const count = 14;
+  for (let i = 0; i < count; i++) {
+    const star = document.createElement("div");
+    star.className = "falling-star";
+    star.style.left = `${Math.random() * 100}%`;
+    star.style.animationDelay = `${Math.random() * 4}s`;
+    star.style.animationDuration = `${2.5 + Math.random() * 2.5}s`;
+    star.style.opacity = String(0.4 + Math.random() * 0.6);
+    star.style.transform = `scale(${0.6 + Math.random() * 0.8})`;
+    layer.appendChild(star);
+  }
 }
 
 function startGame() {
@@ -584,6 +703,7 @@ function onPrimaryActionClick() {
 function openBetSheet() {
   state.betSheetAmount = 0;
   document.getElementById("bet-amount-display").textContent = "0";
+  document.getElementById("bet-amount-input").value = "";
   document.getElementById("sheet-balance").textContent = state.balance;
   document.getElementById("bet-sheet-backdrop").classList.add("active");
 }
@@ -591,6 +711,12 @@ function closeBetSheet() { document.getElementById("bet-sheet-backdrop").classLi
 function addBetAmount(v) {
   state.betSheetAmount = Math.min(20000, state.betSheetAmount + v);
   document.getElementById("bet-amount-display").textContent = state.betSheetAmount;
+  document.getElementById("bet-amount-input").value = "";
+}
+function onBetAmountTyped(v) {
+  const n = Math.max(0, Math.min(20000, Math.floor(Number(v) || 0)));
+  state.betSheetAmount = n;
+  document.getElementById("bet-amount-display").textContent = n;
 }
 function toggleAutoCashout() {
   state.autoCashoutOn = !state.autoCashoutOn;

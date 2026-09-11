@@ -6,17 +6,56 @@ Telegram Stars **and** TON/GRAM wallet deposits, a 3-level referral program
 with a Top-50 leaderboard, an earn-task system, and a full Admin Panel — all
 in one Cloudflare Worker.
 
-## What changed in this pass
+## What changed in this latest pass
 
-**A real bug, found and fixed:** every icon across the whole app (bottom tab
-bar, admin sidebar, buttons) was rendering blank. The cause: `icons.js`
-declared `const ICONS = {...}`, and the bootstrap script that filled
-`[data-icon]` elements read `window.ICONS` — but a top-level `const` in a
-classic `<script>` never becomes a `window` property (only `var`/function
-declarations do). So `window.ICONS` was always `undefined` and every icon
-silently rendered empty. Fixed by explicitly exporting
-`window.ICONS = ICONS` at the end of `icons.js`. This alone accounts for a
-lot of the "unfinished" look from before.
+- **Rocket flight reverted to straight-up** (the previous 45°-tilted rocket
+  was a misread of the brief — the 45° angle was meant for small stars
+  falling in the background, not the rocket itself). The rocket now floats
+  straight up again, and a new decorative **falling-star layer** streaks
+  small stars diagonally (45°) behind it, like a meteor shower.
+- **Custom deposit/bet amounts**: every amount sheet (bet, Stars deposit,
+  TON deposit) now has a plain number input to type any amount, alongside
+  the quick-pick buttons — you're no longer limited to the three presets.
+- **A first-launch "How it works" guide**, shown once automatically the
+  first time anyone opens the Crash tab (tracked via `localStorage`, so it
+  never nags again), matching the reference screenshot's steps and copy.
+- **Referral rewards are now admin-configurable** in two parts, both shown
+  live in the Mini App's Refer tab: a **% of a referred user's first
+  deposit** (was hardcoded at 10%) and a **flat stars-per-invite bonus**
+  (paid the instant someone joins via the link, default 5 stars). Both are
+  set from **Admin Panel → Settings**.
+- **Lottie animations replace GIF/PNG** as the preferred format for the
+  flying/crash visuals (`flying.json` / `crashed.json`), loaded via
+  lottie-web. GIFs are kept as a secondary fallback rather than deleted
+  outright, since your existing `flying.gif`/`crashed.gif` were already
+  live — see "Assets" below for the full fallback order and why the small
+  repeated Stars icon intentionally stays a vector icon rather than Lottie.
+- **`index.html` is now a near-empty shell.** All markup that used to live
+  there moved into `public/src/templates.js` (injected into `#app` by
+  `app.js` at runtime). `index.html` itself now only ever renders one of
+  two things: the Mini App (if launched from Telegram) or a full-screen
+  **"open this in Telegram"** error state using `error.json` — see
+  "Telegram-only gate" below.
+
+### Telegram-only gate
+
+`app.js` checks `Telegram.WebApp.initData` before doing anything else. A
+real Telegram launch always populates it; if it's empty (someone opened the
+Worker's URL directly in a normal browser), the game is never built at
+all — instead a small `error.json` Lottie animation (with a plain-emoji
+fallback if that file is missing) and a one-line message are shown, and
+that's the entire page.
+
+### A real bug, found and fixed (previous pass)
+
+Every icon across the whole app (bottom tab bar, admin sidebar, buttons)
+was rendering blank. The cause: `icons.js` declared `const ICONS = {...}`,
+and the bootstrap script that filled `[data-icon]` elements read
+`window.ICONS` — but a top-level `const` in a classic `<script>` never
+becomes a `window` property (only `var`/function declarations do). So
+`window.ICONS` was always `undefined` and every icon silently rendered
+empty. Fixed by explicitly exporting `window.ICONS = ICONS` at the end of
+`icons.js`. This alone accounted for a lot of the "unfinished" look before.
 
 Everything else requested:
 
@@ -173,7 +212,7 @@ npm install
 npx wrangler login
 
 npx wrangler d1 create crash_game_db   # paste the id into wrangler.toml
-npm run db:migrate:remote              # applies all three migration files
+npm run db:migrate:remote              # applies all four migration files
 
 npx wrangler secret put BOT_TOKEN      # token from @BotFather
 npx wrangler secret put ADMIN_KEY      # any strong random string - your admin panel password
@@ -210,3 +249,31 @@ npm run dev
 Telegram's `initData` verification needs a real Telegram WebView, so do
 full auth testing via Telegram's Mini App preview; the Admin Panel works
 fully locally against `wrangler dev` since it only needs your `ADMIN_KEY`.
+
+## Assets: Lottie-first, with fallbacks
+
+`public/assets/` is entirely optional - the game works with zero custom art
+- but when you're ready to add real animations, drop in:
+
+- `flying.json` / `crashed.json` - Lottie animations for the rocket climb
+  and the crash moment. Preferred format. Rendered via `lottie-web`.
+- `error.json` - shown full-screen if the app is opened outside Telegram.
+- `flying.gif` / `crashed.gif` - still supported as a fallback if the
+  matching `.json` isn't present, since earlier versions of this project
+  shipped with GIFs already in place. Rendered as CSS `background-image`
+  (never `<img>`) so long-pressing them in Telegram's in-app browser can't
+  surface a raw file-link context menu.
+- If neither exists, a small built-in emoji animation is used so nothing
+  is ever visually broken.
+- `star.png` - used for the Stars currency badge everywhere a balance is
+  shown, falling back to a crafted gold-gradient vector icon if missing.
+
+**Why the small Stars icon stays vector/PNG instead of Lottie:** it appears
+dozens of times per screen (every row of the live bet list, every
+transaction, etc.). Instantiating a separate `lottie-web` player for each
+of those would be real, noticeable overhead for a static badge that isn't
+meant to animate - so Lottie is used specifically where it earns its
+keep (the two big, single-instance game animations), and the tiny repeated
+icon stays lightweight. Happy to wire up a Lottie star specifically for the
+one or two largest/most prominent balance displays if you'd like that
+polish in a specific spot - just point to which one.

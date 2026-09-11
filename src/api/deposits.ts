@@ -41,9 +41,13 @@ export async function creditDeposit(env: Env, userId: number, stars: number, bot
       await bot.sendMessage(userId, `\ud83c\udf89 First deposit bonus: +${ownBonus} \u2b50 (${pct}%)`).catch(() => {});
     }
 
-    // Referrer's 10% first-deposit bonus.
+    // Referrer's first-deposit % bonus (admin configurable, default 10%).
     if (user.referrer_id) {
-      const refBonus = Math.floor(stars * 0.1);
+      const refPctRow = await env.DB.prepare(
+        `SELECT value FROM settings WHERE key = 'referral_deposit_bonus_percent'`
+      ).first<{ value: string }>();
+      const refPct = Number(refPctRow?.value ?? "10");
+      const refBonus = Math.floor(stars * (refPct / 100));
       if (refBonus > 0) {
         await env.DB.batch([
           env.DB.prepare(

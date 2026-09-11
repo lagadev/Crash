@@ -419,6 +419,8 @@ async function loadSettings() {
     const s = await adminRequest("/settings");
     document.getElementById("set-joining-bonus").value = s.joiningBonus;
     document.getElementById("set-first-deposit-pct").value = s.firstDepositBonusPercent;
+    document.getElementById("set-ref-deposit-pct").value = s.referralDepositBonusPercent;
+    document.getElementById("set-ref-flat-bonus").value = s.referralFlatBonus;
     document.getElementById("set-ton-address").value = s.tonWalletAddress;
     document.getElementById("set-ton-rate").value = s.starToTonRate;
     document.getElementById("set-big-bet-threshold").value = s.gameTuning.bigBetThreshold;
@@ -434,6 +436,8 @@ async function saveSettings() {
   const body = {
     joiningBonus: Number(document.getElementById("set-joining-bonus").value) || 0,
     firstDepositBonusPercent: Number(document.getElementById("set-first-deposit-pct").value) || 0,
+    referralDepositBonusPercent: Number(document.getElementById("set-ref-deposit-pct").value) || 10,
+    referralFlatBonus: Number(document.getElementById("set-ref-flat-bonus").value) || 0,
     tonWalletAddress: document.getElementById("set-ton-address").value.trim(),
     starToTonRate: Number(document.getElementById("set-ton-rate").value) || 200,
     gameTuning: {
