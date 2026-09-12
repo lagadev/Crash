@@ -806,9 +806,9 @@ button {
 .falling-star {
   position: absolute;
 
-  top: -10%;
+  top: -15%;
 
-  width: 2px;
+  width: 3px;
   height: 24px;
 
   border-radius: 999px;
@@ -837,13 +837,13 @@ button {
 
   0% {
     transform:
-      translate(-10%,-10%)
+      translate(40px,-60px)
       rotate(-45deg);
 
     opacity: 0;
   }
 
-  10% {
+  12% {
     opacity: 1;
   }
 
@@ -853,7 +853,7 @@ button {
 
   100% {
     transform:
-      translate(60%,260%)
+      translate(-280px,340px)
       rotate(-45deg);
 
     opacity: 0;
@@ -927,12 +927,20 @@ button {
 
 .crash-visual {
   position: absolute;
-  inset: 0;
+
+  width: 140px;
+  height: 140px;
+
+  left: 50%;
+  top: 50%;
+
+  margin-left: -70px;
+  margin-top: -70px;
 
   z-index: 2;
 
   background-size: contain;
-  background-position: center 55%;
+  background-position: center;
   background-repeat: no-repeat;
 
   pointer-events: none;
@@ -2886,3 +2894,7 @@ input::placeholder {
       );
   }
 }
+
+/* Small additions for the reference-matched Refer card (this session) */
+.refer-hero .ticket { font-size: 15px; }
+.refer-hero #refer-flat-text, .refer-hero #refer-cap-text { color: var(--text); font-weight: 700; }
