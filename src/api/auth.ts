@@ -84,20 +84,34 @@ async function linkReferral(env: Env, newUserId: number, level1ReferrerId: numbe
     .bind(level1ReferrerId)
     .run();
 
-  // Flat "X stars per invite" bonus, paid immediately (admin configurable).
-  const flatRow = await env.DB.prepare(`SELECT value FROM settings WHERE key = 'referral_flat_bonus'`).first<{
-    value: string;
-  }>();
+  // Flat "X stars per invite" bonus, paid immediately (admin configurable),
+  // capped at N per referrer per day to prevent abuse.
+  const [flatRow, capRow] = await Promise.all([
+    env.DB.prepare(`SELECT value FROM settings WHERE key = 'referral_flat_bonus'`).first<{ value: string }>(),
+    env.DB.prepare(`SELECT value FROM settings WHERE key = 'referral_daily_cap'`).first<{ value: string }>(),
+  ]);
   const flatBonus = Math.max(0, Math.floor(Number(flatRow?.value ?? "5")));
+  const dailyCap = Math.max(0, Math.floor(Number(capRow?.value ?? "30")));
+
   if (flatBonus > 0) {
-    await env.DB.batch([
-      env.DB.prepare(
-        `UPDATE users SET balance = balance + ?, referral_earned = referral_earned + ? WHERE id = ?`
-      ).bind(flatBonus, flatBonus, level1ReferrerId),
-      env.DB.prepare(
-        `INSERT INTO transactions (user_id, type, amount, meta) VALUES (?, 'referral', ?, ?)`
-      ).bind(level1ReferrerId, flatBonus, JSON.stringify({ reason: "new_invite", fromUser: newUserId })),
-    ]);
+    const todayCount = await env.DB.prepare(
+      `SELECT COUNT(*) AS n FROM transactions
+       WHERE user_id = ? AND type = 'referral' AND meta LIKE '%new_invite%'
+       AND created_at >= strftime('%s', 'now', 'start of day')`
+    )
+      .bind(level1ReferrerId)
+      .first<{ n: number }>();
+
+    if ((todayCount?.n ?? 0) < dailyCap) {
+      await env.DB.batch([
+        env.DB.prepare(
+          `UPDATE users SET balance = balance + ?, referral_earned = referral_earned + ? WHERE id = ?`
+        ).bind(flatBonus, flatBonus, level1ReferrerId),
+        env.DB.prepare(
+          `INSERT INTO transactions (user_id, type, amount, meta) VALUES (?, 'referral', ?, ?)`
+        ).bind(level1ReferrerId, flatBonus, JSON.stringify({ reason: "new_invite", fromUser: newUserId })),
+      ]);
+    }
   }
 
   // Build the 3-level ancestor chain: level1 = direct referrer, level2/3 = their up-line.

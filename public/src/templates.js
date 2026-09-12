@@ -68,21 +68,16 @@ function appShellHtml() {
     </div>
 
     <div class="refer-hero">
-      <h2>Invite friends and earn<br /><span class="pct" id="refer-pct-badge">10%</span> from their first deposit!</h2>
-      <p>Plus <span class="b" id="refer-flat-badge">5 stars</span> instantly for every friend who joins with your link.
-      Then keep earning from their play — <span class="b">0.5%</span> of your direct friend's turnover,
-      <span class="b">0.2%</span> from their friends, and <span class="b">0.1%</span> beyond that.<br/>
-      Credited automatically every 30 minutes (from 0.01 <span class="star-ic" data-star-inline></span>).</p>
+      <h2>Invite friends and earn <span class="pct" id="refer-pct-badge">10%</span> from their deposits!</h2>
+      <p>Also by <span class="ticket">\ud83c\udfab</span> <span id="refer-flat-text">5</span> for each, but no more than <span id="refer-cap-text">30</span> per day</p>
+      <div class="stat-grid" style="margin:18px 0 4px">
+        <div class="stat-box"><div class="n" id="ref-invited">0</div><div class="l">Invited</div></div>
+        <div class="stat-box"><div class="n" id="ref-earned">0</div><div class="l">Earned</div></div>
+      </div>
       <div class="refer-actions">
-        <button class="invite-btn" onclick="inviteFriends()"><span class="icon" data-icon="share"></span>Invite</button>
+        <button class="invite-btn" onclick="inviteFriends()">Invite</button>
         <button class="icon-btn" onclick="copyReferralLink()"><span class="icon" data-icon="copy"></span></button>
       </div>
-    </div>
-
-    <div class="stat-grid" style="margin-bottom:14px">
-      <div class="stat-box"><div class="n" id="ref-invited">0</div><div class="l">Invited</div></div>
-      <div class="stat-box"><div class="n" id="ref-earned">0</div><div class="l">Earned</div></div>
-      <div class="stat-box"><div class="n" id="ref-pending">0</div><div class="l">Pending</div></div>
     </div>
 
     <div class="card">
@@ -91,9 +86,9 @@ function appShellHtml() {
     </div>
   </section>
 
-  <!-- ================= WALLET ================= -->
+  <!-- ================= WALLET (tab renamed to "Profile" per latest request) ================= -->
   <section id="tab-wallet" class="tab-screen">
-    <div class="topbar"><div class="title">Wallet</div></div>
+    <div class="topbar"><div class="title">Profile</div></div>
 
     <div class="card" style="text-align:center">
       <div style="color:var(--muted);font-size:13px;font-weight:600">Available Balance</div>
@@ -122,46 +117,12 @@ function appShellHtml() {
     </div>
   </section>
 
-  <!-- ================= PROFILE ================= -->
-  <section id="tab-profile" class="tab-screen">
-    <div class="topbar"><div class="title">Profile</div></div>
-
-    <div class="card" style="text-align:center">
-      <div class="avatar" style="width:72px;height:72px;font-size:24px;margin:0 auto 10px;background:var(--accent-grad)" id="profile-avatar">?</div>
-      <div style="font-weight:800;font-size:18px" id="profile-name">—</div>
-      <div style="color:var(--muted);font-size:13px" id="profile-username">—</div>
-    </div>
-
-    <div class="stat-grid" style="margin-bottom:14px">
-      <div class="stat-box"><div class="n" id="stat-balance">0</div><div class="l">Balance</div></div>
-      <div class="stat-box"><div class="n" id="stat-wagered">0</div><div class="l">Wagered</div></div>
-      <div class="stat-box"><div class="n" id="stat-won">0</div><div class="l">Won</div></div>
-    </div>
-
-    <div class="card">
-      <h3>ID Details</h3>
-      <div class="row-line"><span>Telegram ID</span><span class="v" id="profile-id">—</span></div>
-      <div class="row-line"><span>Username</span><span class="v" id="profile-uname">—</span></div>
-      <div class="row-line"><span>First Name</span><span class="v" id="profile-fname">—</span></div>
-      <div class="row-line"><span>Member Since</span><span class="v" id="profile-since">—</span></div>
-    </div>
-
-    <div class="card">
-      <h3>Account Summary</h3>
-      <div class="row-line"><span>Total Deposited</span><span class="v" id="profile-deposited">0</span></div>
-      <div class="row-line"><span>Total Withdrawn</span><span class="v" id="profile-withdrawn">0</span></div>
-      <div class="row-line"><span>Referral Earned</span><span class="v" id="profile-ref-earned">0</span></div>
-      <div class="row-line"><span>Invited Friends</span><span class="v" id="profile-invited">0</span></div>
-    </div>
-  </section>
-
   <!-- ================= Bottom tab bar ================= -->
   <div class="tabbar">
     <button class="tab-item active" data-tab="tab-crash" onclick="showTab('tab-crash')"><span class="icon" data-icon="rocket"></span><span>Crash</span></button>
     <button class="tab-item" data-tab="tab-task" onclick="showTab('tab-task')"><span class="icon" data-icon="task"></span><span>Task</span></button>
     <button class="tab-item" data-tab="tab-refer" onclick="showTab('tab-refer')"><span class="icon" data-icon="users"></span><span>Refer</span></button>
-    <button class="tab-item" data-tab="tab-wallet" onclick="showTab('tab-wallet')"><span class="icon" data-icon="wallet"></span><span>Wallet</span></button>
-    <button class="tab-item" data-tab="tab-profile" onclick="showTab('tab-profile')"><span class="icon" data-icon="profile"></span><span>Profile</span></button>
+    <button class="tab-item" data-tab="tab-wallet" onclick="showTab('tab-wallet')"><span class="icon" data-icon="profile"></span><span>Profile</span></button>
   </div>
 
   <!-- Crash bottom action bar (only visible on Crash tab) -->

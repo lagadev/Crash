@@ -6,4 +6,5 @@
 
 INSERT OR IGNORE INTO settings (key, value) VALUES
   ('referral_deposit_bonus_percent', '10'),
-  ('referral_flat_bonus', '5');
+  ('referral_flat_bonus', '5'),
+  ('referral_daily_cap', '30');

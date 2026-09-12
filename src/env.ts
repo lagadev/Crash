@@ -6,6 +6,7 @@ export interface Env {
   BOT_TOKEN: string;
   ADMIN_KEY: string;
   BOT_USERNAME: string;
+  APP_SHORT_NAME?: string;
   MIN_WITHDRAW_STARS: string;
   HOUSE_EDGE: string;
   TON_API_KEY?: string;

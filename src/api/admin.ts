@@ -237,6 +237,7 @@ adminApi.get("/settings", async (c) => {
     "game_tuning",
     "referral_deposit_bonus_percent",
     "referral_flat_bonus",
+    "referral_daily_cap",
   ];
   const rows = await c.env.DB.prepare(
     `SELECT key, value FROM settings WHERE key IN (${keys.map(() => "?").join(",")})`
@@ -252,6 +253,7 @@ adminApi.get("/settings", async (c) => {
     starToTonRate: Number(map.star_to_ton_rate ?? "200"),
     referralDepositBonusPercent: Number(map.referral_deposit_bonus_percent ?? "10"),
     referralFlatBonus: Number(map.referral_flat_bonus ?? "5"),
+    referralDailyCap: Number(map.referral_daily_cap ?? "30"),
     gameTuning: map.game_tuning
       ? JSON.parse(map.game_tuning)
       : { bigBetThreshold: 2000, bigBetMaxCrash: 1.5, multiplayerThreshold: 5, multiplayerMinCrash: 3 },
@@ -267,6 +269,7 @@ adminApi.post("/settings", async (c) => {
     ["star_to_ton_rate", String(Math.max(1, Number(b.starToTonRate) || 200))],
     ["referral_deposit_bonus_percent", String(Math.max(0, Number(b.referralDepositBonusPercent) || 10))],
     ["referral_flat_bonus", String(Math.max(0, Math.floor(Number(b.referralFlatBonus) || 0)))],
+    ["referral_daily_cap", String(Math.max(0, Math.floor(Number(b.referralDailyCap) || 30)))],
     [
       "game_tuning",
       JSON.stringify({

@@ -77,17 +77,23 @@ walletApi.get("/referral", async (c) => {
     .first<{ invited_count: number; referral_earned: number; referral_pending: number }>();
 
   const settingsRows = await c.env.DB.prepare(
-    `SELECT key, value FROM settings WHERE key IN ('referral_deposit_bonus_percent', 'referral_flat_bonus')`
+    `SELECT key, value FROM settings WHERE key IN ('referral_deposit_bonus_percent', 'referral_flat_bonus', 'referral_daily_cap')`
   ).all<{ key: string; value: string }>();
   const settingsMap = Object.fromEntries((settingsRows.results ?? []).map((r) => [r.key, r.value]));
+
+  // Direct Mini App link (opens the app itself, not the bot chat) - requires
+  // the app's short name from BotFather if one is set; falls back to a plain
+  // bot link (still using startapp=) if not configured.
+  const appPath = c.env.APP_SHORT_NAME ? `${c.env.BOT_USERNAME}/${c.env.APP_SHORT_NAME}` : c.env.BOT_USERNAME;
 
   return ok({
     invited: row?.invited_count ?? 0,
     earned: row?.referral_earned ?? 0,
     pending: row?.referral_pending ?? 0,
-    link: `https://t.me/${c.env.BOT_USERNAME}?start=ref_${user.id}`,
+    link: `https://t.me/${appPath}?startapp=ref_${user.id}`,
     depositBonusPercent: Number(settingsMap.referral_deposit_bonus_percent ?? "10"),
     flatBonus: Number(settingsMap.referral_flat_bonus ?? "5"),
+    dailyCap: Number(settingsMap.referral_daily_cap ?? "30"),
   });
 });
 

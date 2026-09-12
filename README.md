@@ -277,3 +277,29 @@ keep (the two big, single-instance game animations), and the tiny repeated
 icon stays lightweight. Happy to wire up a Lottie star specifically for the
 one or two largest/most prominent balance displays if you'd like that
 polish in a specific spot - just point to which one.
+
+## Latest pass (this update)
+
+- **crashed animation**: display time halved (3.5s → 1.75s) and shrunk to
+  the same ~140×140 size as the flying rocket (was covering the whole
+  stage before).
+- **Profile tab removed**; the Wallet tab is now labeled **Profile** and
+  holds the same balance/deposit/withdraw/transaction content as before.
+- **Referral links now use `?startapp=`** (opens the Mini App directly)
+  instead of `?start=` (opens the bot chat) - format:
+  `https://t.me/<BOT_USERNAME>[/<APP_SHORT_NAME>]?startapp=ref_<id>`. Set
+  `APP_SHORT_NAME` in `wrangler.toml` if your Mini App has one from
+  BotFather; the referral-attribution logic itself needed no changes, since
+  Telegram surfaces both link styles identically as `start_param` inside
+  `initData`.
+- **Refer tab now matches the reference screenshot layout**: headline with
+  the inline "X%" badge, a single "Also 🎫 N for each, capped at M/day" line,
+  and just two stat boxes (Invited / Earned). The daily cap is a new
+  admin-configurable setting (**Settings → Referral Rewards**) enforced
+  server-side when the flat per-invite bonus is paid.
+- **Falling stars redesigned**: now streak right-to-left at 45° (was
+  left-to-right before), speed picks up as the multiplier climbs, and they
+  visibly reverse direction the instant a round crashes.
+- Small further visual polish pass: a top highlight sheen on cards, an
+  active-tab pill background, and a soft ambient glow around the game
+  stage.

@@ -30,6 +30,11 @@ crons = ["*/30 * * * *"]
 
 [vars]
 BOT_USERNAME = "LagahCrashBot"
+# Optional: your Mini App's short name from @BotFather (Bot Settings > Mini App),
+# so referral links open the app directly instead of the bot chat:
+# https://t.me/<BOT_USERNAME>/<APP_SHORT_NAME>?startapp=ref_<id>
+# Leave blank to just use https://t.me/<BOT_USERNAME>?startapp=ref_<id>.
+APP_SHORT_NAME = ""
 MIN_WITHDRAW_STARS = "50"
 HOUSE_EDGE = "0.03"
 

@@ -109,7 +109,6 @@ function showTab(id) {
   if (id === "tab-task") loadTasks();
   if (id === "tab-refer") loadReferral();
   if (id === "tab-wallet") loadWallet();
-  if (id === "tab-profile") loadProfile();
 }
 
 function toast(msg) {
@@ -157,40 +156,6 @@ function avatarHtml(photoUrl, name, gradient) {
     return `<div class="avatar"><img src="${escapeAttr(photoUrl)}" alt="" draggable="false" oncontextmenu="return false" onerror="this.parentNode.style.background='linear-gradient(135deg,${gradient})';this.parentNode.textContent='${(name || "?")[0].toUpperCase()}'"/></div>`;
   }
   return `<div class="avatar" style="background:linear-gradient(135deg,${gradient})">${(name || "?")[0].toUpperCase()}</div>`;
-}
-
-// ---------------- Profile ----------------
-async function loadProfile() {
-  try {
-    const { user } = await API.me();
-    state.me = user;
-    state.balance = user.balance;
-    refreshBalanceUI();
-
-    const avatarEl = document.getElementById("profile-avatar");
-    if (user.photo_url) {
-      avatarEl.style.background = "none";
-      avatarEl.innerHTML = `<img src="${escapeAttr(user.photo_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:999px" draggable="false" oncontextmenu="return false" onerror="this.parentNode.style.background='var(--accent-grad)';this.parentNode.textContent='${(user.first_name || "?")[0].toUpperCase()}'"/>`;
-    } else {
-      avatarEl.textContent = (user.first_name || "?")[0].toUpperCase();
-    }
-
-    document.getElementById("profile-name").textContent = user.first_name || "Player";
-    document.getElementById("profile-username").textContent = user.username ? "@" + user.username : `ID ${user.id}`;
-    document.getElementById("stat-balance").textContent = user.balance;
-    document.getElementById("stat-wagered").textContent = user.total_wagered;
-    document.getElementById("stat-won").textContent = user.total_won;
-    document.getElementById("profile-id").textContent = user.id;
-    document.getElementById("profile-uname").textContent = user.username ? "@" + user.username : "—";
-    document.getElementById("profile-fname").textContent = user.first_name || "—";
-    document.getElementById("profile-since").textContent = new Date(user.created_at * 1000).toLocaleDateString();
-    document.getElementById("profile-deposited").innerHTML = `${user.total_deposited} ${starTag()}`;
-    document.getElementById("profile-withdrawn").innerHTML = `${user.total_withdrawn} ${starTag()}`;
-    document.getElementById("profile-ref-earned").innerHTML = `${user.referral_earned} ${starTag()}`;
-    document.getElementById("profile-invited").textContent = user.invited_count;
-  } catch (e) {
-    toast("Failed to load profile");
-  }
 }
 
 // ---------------- Wallet ----------------
@@ -258,9 +223,9 @@ async function loadReferral() {
     const r = await API.referral();
     document.getElementById("ref-invited").textContent = r.invited;
     document.getElementById("ref-earned").textContent = r.earned;
-    document.getElementById("ref-pending").textContent = r.pending.toFixed ? r.pending.toFixed(2) : r.pending;
     document.getElementById("refer-pct-badge").textContent = `${r.depositBonusPercent}%`;
-    document.getElementById("refer-flat-badge").innerHTML = `${r.flatBonus} ${starTag()}`;
+    document.getElementById("refer-flat-text").textContent = r.flatBonus;
+    document.getElementById("refer-cap-text").textContent = r.dailyCap;
     state.referralLink = r.link;
   } catch (e) {
     toast("Failed to load referral info");
@@ -520,22 +485,51 @@ function tryGifThenEmoji(el, gifPath, emoji) {
   img.src = gifPath;
 }
 
-/** Small stars falling diagonally (45°) behind the rocket, like a meteor shower. Purely decorative/CSS-driven. */
+/** Small stars falling right-to-left at 45° (like debris streaming past the climbing rocket). */
 function setupFallingStars() {
   const layer = document.getElementById("falling-stars");
   if (!layer || layer.dataset.built) return;
   layer.dataset.built = "1";
-  const count = 14;
+  const count = 16;
   for (let i = 0; i < count; i++) {
     const star = document.createElement("div");
     star.className = "falling-star";
-    star.style.left = `${Math.random() * 100}%`;
+    star.style.left = `${40 + Math.random() * 70}%`; // start mostly from the right side
+    star.style.top = `${-20 + Math.random() * 60}%`;
+    const baseDuration = 2.2 + Math.random() * 2.2;
+    star.dataset.baseDuration = String(baseDuration);
     star.style.animationDelay = `${Math.random() * 4}s`;
-    star.style.animationDuration = `${2.5 + Math.random() * 2.5}s`;
+    star.style.animationDuration = `${baseDuration}s`;
     star.style.opacity = String(0.4 + Math.random() * 0.6);
     star.style.transform = `scale(${0.6 + Math.random() * 0.8})`;
     layer.appendChild(star);
   }
+}
+
+/** The higher the multiplier climbs, the faster the star-field streaks past (shorter animation duration = faster). */
+function updateFallingStarsSpeed(multiplier) {
+  const speedFactor = Math.min(5, 1 + (multiplier - 1) * 0.35);
+  document.querySelectorAll(".falling-star").forEach((el) => {
+    const base = Number(el.dataset.baseDuration) || 3;
+    el.style.animationDuration = `${(base / speedFactor).toFixed(2)}s`;
+    el.style.animationDirection = "normal";
+  });
+}
+
+/** On crash: the star-field visually "stops" and reverses (shoots back up-and-right). */
+function reverseFallingStars() {
+  document.querySelectorAll(".falling-star").forEach((el) => {
+    el.style.animationDirection = "reverse";
+    el.style.animationDuration = `${(Number(el.dataset.baseDuration) || 3) * 1.4}s`;
+  });
+}
+
+/** Reset the star-field to its normal forward speed for a fresh round. */
+function resetFallingStars() {
+  document.querySelectorAll(".falling-star").forEach((el) => {
+    el.style.animationDirection = "normal";
+    el.style.animationDuration = `${el.dataset.baseDuration}s`;
+  });
 }
 
 function startGame() {
@@ -576,6 +570,7 @@ function renderRound(payload) {
   if (payload.phase === "waiting") {
     setStage("waiting");
     document.getElementById("countdown-num").textContent = payload.countdownSeconds;
+    resetFallingStars();
     const mine = payload.bets.find((b) => state.me && b.userId === state.me.id);
     state.myBetPlaced = !!mine;
     updatePrimaryButton();
@@ -598,6 +593,7 @@ function updateLiveMultiplier(m) {
   if (el) el.textContent = `${m.toFixed(2)}x`;
   updatePrimaryButton(m);
   growPendingBets(m);
+  updateFallingStarsSpeed(m);
 }
 
 /** Updates every still-in-play bet row's live winnings without a full re-render, for smooth 10x/sec growth. */
@@ -617,6 +613,7 @@ function renderCrash(payload) {
   document.getElementById("crashed-multiplier").textContent = `${(payload.crashPoint ?? 1).toFixed(2)}x`;
   state.myBetPlaced = false;
   updatePrimaryButton();
+  reverseFallingStars();
   renderHistory(payload.history || []);
   renderBetList(payload.bets || []);
 }

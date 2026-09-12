@@ -2,7 +2,7 @@ import { multiplierAtElapsed } from "./multiplier";
 import type { PlayerBet, RoundPhase, RoundState } from "./types";
 
 export const WAITING_MS = 5_000; // "start counting 5 sec" betting window
-export const CRASHED_MS = 3_500; // how long the crashed.gif stays up before the next round
+export const CRASHED_MS = 1_750; // how long the crashed animation stays up before the next round (halved per request)
 export const TICK_RUNNING_MS = 100;
 export const TICK_WAITING_MS = 250;
 export const HISTORY_LIMIT = 10; // "always keep the last 10 rounds"

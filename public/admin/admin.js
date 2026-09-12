@@ -421,6 +421,7 @@ async function loadSettings() {
     document.getElementById("set-first-deposit-pct").value = s.firstDepositBonusPercent;
     document.getElementById("set-ref-deposit-pct").value = s.referralDepositBonusPercent;
     document.getElementById("set-ref-flat-bonus").value = s.referralFlatBonus;
+    document.getElementById("set-ref-daily-cap").value = s.referralDailyCap;
     document.getElementById("set-ton-address").value = s.tonWalletAddress;
     document.getElementById("set-ton-rate").value = s.starToTonRate;
     document.getElementById("set-big-bet-threshold").value = s.gameTuning.bigBetThreshold;
@@ -438,6 +439,7 @@ async function saveSettings() {
     firstDepositBonusPercent: Number(document.getElementById("set-first-deposit-pct").value) || 0,
     referralDepositBonusPercent: Number(document.getElementById("set-ref-deposit-pct").value) || 10,
     referralFlatBonus: Number(document.getElementById("set-ref-flat-bonus").value) || 0,
+    referralDailyCap: Number(document.getElementById("set-ref-daily-cap").value) || 30,
     tonWalletAddress: document.getElementById("set-ton-address").value.trim(),
     starToTonRate: Number(document.getElementById("set-ton-rate").value) || 200,
     gameTuning: {

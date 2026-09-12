@@ -79,17 +79,25 @@ button { font-family: inherit; }
 }
 .tab-item {
   display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--muted);
-  background: none; border: none; cursor: pointer; flex: 1; padding: 6px 2px; font-size: 11px; font-weight: 600;
-  transition: color .15s ease;
+  background: none; border: none; cursor: pointer; flex: 1; padding: 8px 2px 6px; font-size: 11px; font-weight: 600;
+  transition: color .15s ease, transform .15s ease;
 }
-.tab-item.active { color: var(--text); }
-.tab-item.active .icon { color: var(--accent); }
+.tab-item.active { color: var(--text); transform: translateY(-2px); }
+.tab-item.active .icon {
+  color: #fff; background: var(--accent-grad); border-radius: 10px; padding: 4px 10px;
+  box-shadow: 0 6px 14px rgba(76,125,255,.4); margin-bottom: 1px;
+}
 .tab-item .icon svg { width: 22px; height: 22px; }
 
 /* ---------- Premium cards (shared) ---------- */
 .card {
   background: var(--card-grad); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 18px; margin-bottom: 14px; backdrop-filter: blur(16px); box-shadow: var(--shadow-soft);
+  position: relative; overflow: hidden;
+}
+.card::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
 }
 .card h3 { margin: 0 0 12px; font-size: 14px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
 .page-title { font-size: 21px; font-weight: 800; margin: 4px 0 16px; }
@@ -98,8 +106,8 @@ button { font-family: inherit; }
 .stage {
   height: 300px; display: flex; align-items: center; justify-content: center; position: relative;
   background: radial-gradient(120% 100% at 50% 100%, rgba(76,125,255,.16), transparent 60%), var(--card-grad);
-  border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
-  margin-bottom: 12px; box-shadow: var(--shadow);
+  border: 1px solid rgba(76,125,255,.22); border-radius: var(--radius); overflow: hidden;
+  margin-bottom: 12px; box-shadow: var(--shadow), 0 0 0 1px rgba(76,125,255,.08), 0 0 40px -12px rgba(76,125,255,.35);
 }
 .stage::before {
   content: ""; position: absolute; inset: 0; pointer-events: none;
@@ -129,18 +137,21 @@ button { font-family: inherit; }
 
 /* Small stars fall diagonally (45°) behind the rocket, like a meteor
    shower streaking past as it climbs - purely decorative. */
+/* Small stars streak right-to-left at 45°, like debris blown past as the
+   rocket climbs. Speed picks up with altitude (multiplier) and reverses
+   direction (shoots back up-right) the instant the round crashes. */
 .falling-stars { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
 .falling-star {
-  position: absolute; top: -10%; width: 3px; height: 18px; border-radius: 999px;
+  position: absolute; top: -15%; width: 3px; height: 20px; border-radius: 999px;
   background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,0));
   transform: rotate(-45deg); box-shadow: 0 0 6px 1px rgba(255,255,255,.5);
   animation-name: star-fall; animation-timing-function: linear; animation-iteration-count: infinite;
 }
 @keyframes star-fall {
-  0% { transform: translate(-10%, -10%) rotate(-45deg); opacity: 0; }
-  10% { opacity: 1; }
+  0% { transform: translate(40px, -60px) rotate(-45deg); opacity: 0; }
+  12% { opacity: 1; }
   85% { opacity: 1; }
-  100% { transform: translate(60%, 260%) rotate(-45deg); opacity: 0; }
+  100% { transform: translate(-280px, 340px) rotate(-45deg); opacity: 0; }
 }
 
 /* The rocket climbs straight up (matching the original reference UI - not
@@ -164,10 +175,11 @@ button { font-family: inherit; }
   50% { transform: translateY(-16px); }
 }
 .crash-visual {
-  position: absolute; inset: 0; background-size: contain; background-position: center 55%; background-repeat: no-repeat;
+  position: absolute; width: 140px; height: 140px; left: 50%; top: 50%; margin-left: -70px; margin-top: -70px;
+  background-size: contain; background-position: center; background-repeat: no-repeat;
   -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; pointer-events: none; z-index: 2;
 }
-.crash-visual.emoji-fallback { display: flex; align-items: center; justify-content: center; font-size: 88px; }
+.crash-visual.emoji-fallback { display: flex; align-items: center; justify-content: center; font-size: 64px; }
 
 .crash-multiplier { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 42px; font-weight: 800; z-index: 2; }
 .crash-multiplier.live { color: #fff; text-shadow: 0 0 24px rgba(76,125,255,.5); }
@@ -269,10 +281,12 @@ input[type=number], input[type=text] {
   border: 1px solid rgba(76,125,255,.25); border-radius: 24px; padding: 22px; box-shadow: var(--shadow);
   margin-bottom: 14px;
 }
-.refer-hero h2 { margin: 0 0 6px; font-size: 22px; font-weight: 800; line-height: 1.3; }
+.refer-hero h2 { margin: 0 0 6px; font-size: 22px; font-weight: 800; line-height: 1.35; }
 .refer-hero .pct { display: inline-block; background: var(--accent-grad); color: #fff; padding: 2px 10px; border-radius: 8px; }
-.refer-hero p { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+.refer-hero p { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
 .refer-hero .b { color: var(--gold); font-weight: 700; }
+.refer-hero .ticket { font-size: 15px; }
+.refer-hero #refer-flat-text, .refer-hero #refer-cap-text { color: var(--text); font-weight: 700; }
 .refer-actions { display: flex; gap: 10px; margin-top: 16px; }
 .invite-btn {
   flex: 1; background: var(--accent-grad); border: none; color: #fff; font-weight: 800; font-size: 15px;
