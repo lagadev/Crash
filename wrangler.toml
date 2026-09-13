@@ -41,3 +41,7 @@ HOUSE_EDGE = "0.03"
 # Secrets:
 # BOT_TOKEN
 # ADMIN_KEY
+# TON_API_KEY       - optional, higher TonCenter rate limits
+# UGLYPAY_API_KEY   - your TK payment gateway API key (from its /keys.html page)
+# BOT_SHARED_KEY    - shared secret with the companion crash-game-bot project
+#                     (any strong random string - must match its BOT_SHARED_KEY)

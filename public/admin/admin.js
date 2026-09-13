@@ -424,6 +424,10 @@ async function loadSettings() {
     document.getElementById("set-ref-daily-cap").value = s.referralDailyCap;
     document.getElementById("set-ton-address").value = s.tonWalletAddress;
     document.getElementById("set-ton-rate").value = s.starToTonRate;
+    document.getElementById("set-uglypay-url").value = s.uglypayBaseUrl;
+    document.getElementById("set-uglypay-callback").value = s.uglypayCallbackUrl;
+    document.getElementById("set-tk-rate").value = s.tkToStarRate;
+    document.getElementById("set-withdraw-fee").value = s.withdrawFeePercent;
     document.getElementById("set-big-bet-threshold").value = s.gameTuning.bigBetThreshold;
     document.getElementById("set-big-bet-max-crash").value = s.gameTuning.bigBetMaxCrash;
     document.getElementById("set-mp-threshold").value = s.gameTuning.multiplayerThreshold;
@@ -442,6 +446,10 @@ async function saveSettings() {
     referralDailyCap: Number(document.getElementById("set-ref-daily-cap").value) || 30,
     tonWalletAddress: document.getElementById("set-ton-address").value.trim(),
     starToTonRate: Number(document.getElementById("set-ton-rate").value) || 200,
+    uglypayBaseUrl: document.getElementById("set-uglypay-url").value.trim(),
+    uglypayCallbackUrl: document.getElementById("set-uglypay-callback").value.trim(),
+    tkToStarRate: Number(document.getElementById("set-tk-rate").value) || 1,
+    withdrawFeePercent: Number(document.getElementById("set-withdraw-fee").value) || 0,
     gameTuning: {
       bigBetThreshold: Number(document.getElementById("set-big-bet-threshold").value) || 2000,
       bigBetMaxCrash: Number(document.getElementById("set-big-bet-max-crash").value) || 1.5,

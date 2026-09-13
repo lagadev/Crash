@@ -238,6 +238,10 @@ adminApi.get("/settings", async (c) => {
     "referral_deposit_bonus_percent",
     "referral_flat_bonus",
     "referral_daily_cap",
+    "withdraw_fee_percent",
+    "tk_to_star_rate",
+    "uglypay_base_url",
+    "uglypay_callback_url",
   ];
   const rows = await c.env.DB.prepare(
     `SELECT key, value FROM settings WHERE key IN (${keys.map(() => "?").join(",")})`
@@ -254,6 +258,10 @@ adminApi.get("/settings", async (c) => {
     referralDepositBonusPercent: Number(map.referral_deposit_bonus_percent ?? "10"),
     referralFlatBonus: Number(map.referral_flat_bonus ?? "5"),
     referralDailyCap: Number(map.referral_daily_cap ?? "30"),
+    withdrawFeePercent: Number(map.withdraw_fee_percent ?? "0"),
+    tkToStarRate: Number(map.tk_to_star_rate ?? "1"),
+    uglypayBaseUrl: map.uglypay_base_url ?? "",
+    uglypayCallbackUrl: map.uglypay_callback_url ?? "",
     gameTuning: map.game_tuning
       ? JSON.parse(map.game_tuning)
       : { bigBetThreshold: 2000, bigBetMaxCrash: 1.5, multiplayerThreshold: 5, multiplayerMinCrash: 3 },
@@ -270,6 +278,10 @@ adminApi.post("/settings", async (c) => {
     ["referral_deposit_bonus_percent", String(Math.max(0, Number(b.referralDepositBonusPercent) || 10))],
     ["referral_flat_bonus", String(Math.max(0, Math.floor(Number(b.referralFlatBonus) || 0)))],
     ["referral_daily_cap", String(Math.max(0, Math.floor(Number(b.referralDailyCap) || 30)))],
+    ["withdraw_fee_percent", String(Math.max(0, Number(b.withdrawFeePercent) || 0))],
+    ["tk_to_star_rate", String(Math.max(0.01, Number(b.tkToStarRate) || 1))],
+    ["uglypay_base_url", String(b.uglypayBaseUrl || "")],
+    ["uglypay_callback_url", String(b.uglypayCallbackUrl || "")],
     [
       "game_tuning",
       JSON.stringify({

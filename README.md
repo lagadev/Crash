@@ -303,3 +303,38 @@ polish in a specific spot - just point to which one.
 - Small further visual polish pass: a top highlight sheen on cards, an
   active-tab pill background, and a soft ambient glow around the game
   stage.
+
+## Companion project: crash-game-bot
+
+A separate Worker (`crash-game-bot`) adds a classic persistent-keyboard
+Telegram bot interface (Play Crash / Profile / Refer / Withdraw / admin-only
+Admin Panel) on top of this same backend, authenticated via a new
+`BOT_SHARED_KEY` secret shared between the two projects. See its own README
+for setup - in short:
+
+1. Set `BOT_SHARED_KEY` here too: `npx wrangler secret put BOT_SHARED_KEY`
+   (must exactly match the value in `crash-game-bot`).
+2. Deploy `crash-game-bot` and point the bot's Telegram webhook **at it**
+   instead of at this project (only one Worker can be the webhook receiver).
+3. Configure the BDT payment gateway, withdrawal fee, and TON/TK rates from
+   **Admin Panel → Settings** here, as usual - the bot project has no
+   settings UI of its own, it just calls this Worker's API.
+
+## New in this pass
+
+- **Crash-only Mini App mode**: opening this Worker's URL with `?view=crash`
+  removes the tab bar and every screen except Crash - used by the bot
+  project's "Play Crash" keyboard button.
+- **Withdrawal fee** (Settings → Withdrawals): a % deducted from the payout
+  amount; the user's balance is still debited the full requested amount,
+  and `withdraw_requests` now records both the fee and the net amount.
+- **A third deposit method**: a BDT/Taka payment gateway (UglyPay-compatible
+  invoice API) alongside Stars and TON - `POST /api/uglypay/create` and
+  `POST /api/uglypay/webhook` (HMAC-verified with your own gateway API key,
+  set as the `UGLYPAY_API_KEY` secret - not `ADMIN_KEY`). Configure the
+  gateway's base URL, your callback URL, and the Star-to-TK rate from
+  Settings.
+- **`/api/bot/*`**: a small set of endpoints for the companion bot project
+  only (ensure-user, credit a Stars payment, read the `/start` message),
+  gated by `X-Bot-Key` matching the `BOT_SHARED_KEY` secret - never exposed
+  to end users.

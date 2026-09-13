@@ -38,6 +38,23 @@ walletApi.post("/deposit", async (c) => {
   return ok({ invoiceLink: link, payload });
 });
 
+/** Balance + fee/minimum info the Withdraw screen (Mini App or bot) needs before asking for an amount. */
+walletApi.get("/withdraw-info", async (c) => {
+  const user = await authenticate(c);
+  if (!user) return fail("Unauthorized", 401);
+
+  const [balRow, feeRow] = await Promise.all([
+    c.env.DB.prepare(`SELECT balance FROM users WHERE id = ?`).bind(user.id).first<{ balance: number }>(),
+    c.env.DB.prepare(`SELECT value FROM settings WHERE key = 'withdraw_fee_percent'`).first<{ value: string }>(),
+  ]);
+  const balance = balRow?.balance ?? 0;
+  const feePercent = Number(feeRow?.value ?? "0");
+  const min = Number(c.env.MIN_WITHDRAW_STARS || "50");
+  const availableAfterFee = Math.floor(balance * (1 - feePercent / 100));
+
+  return ok({ balance, feePercent, minWithdraw: min, availableAfterFee });
+});
+
 walletApi.post("/withdraw", async (c) => {
   const user = await authenticate(c);
   if (!user) return fail("Unauthorized", 401);
@@ -50,20 +67,26 @@ walletApi.post("/withdraw", async (c) => {
     return fail(`Minimum withdrawal is ${min} \u2b50`, 400);
   }
 
-  const row = await c.env.DB.prepare(`SELECT balance FROM users WHERE id = ?`).bind(user.id).first<{
-    balance: number;
-  }>();
+  const [row, feeRow] = await Promise.all([
+    c.env.DB.prepare(`SELECT balance FROM users WHERE id = ?`).bind(user.id).first<{ balance: number }>(),
+    c.env.DB.prepare(`SELECT value FROM settings WHERE key = 'withdraw_fee_percent'`).first<{ value: string }>(),
+  ]);
   if (!row || row.balance < amount) return fail("Insufficient balance", 400);
+
+  const feePercent = Number(feeRow?.value ?? "0");
+  const netAmount = Math.floor(amount * (1 - feePercent / 100));
 
   await c.env.DB.batch([
     c.env.DB.prepare(`UPDATE users SET balance = balance - ? WHERE id = ?`).bind(amount, user.id),
-    c.env.DB.prepare(`INSERT INTO withdraw_requests (user_id, amount) VALUES (?, ?)`).bind(user.id, amount),
     c.env.DB.prepare(
-      `INSERT INTO transactions (user_id, type, amount, meta) VALUES (?, 'withdraw', ?, '{"status":"pending"}')`
-    ).bind(user.id, -amount),
+      `INSERT INTO withdraw_requests (user_id, amount, fee_percent, net_amount) VALUES (?, ?, ?, ?)`
+    ).bind(user.id, amount, feePercent, netAmount),
+    c.env.DB.prepare(
+      `INSERT INTO transactions (user_id, type, amount, meta) VALUES (?, 'withdraw', ?, ?)`
+    ).bind(user.id, -amount, JSON.stringify({ status: "pending", feePercent, netAmount })),
   ]);
 
-  return ok({ message: "Withdrawal request submitted", amount });
+  return ok({ message: "Withdrawal request submitted", amount, feePercent, netAmount });
 });
 
 walletApi.get("/referral", async (c) => {

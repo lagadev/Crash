@@ -10,4 +10,6 @@ export interface Env {
   MIN_WITHDRAW_STARS: string;
   HOUSE_EDGE: string;
   TON_API_KEY?: string;
+  BOT_SHARED_KEY?: string;
+  UGLYPAY_API_KEY?: string;
 }

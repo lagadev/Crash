@@ -12,6 +12,23 @@ export interface AuthedUser extends TelegramUser {}
  * Returns the Telegram user, or null if auth failed.
  */
 export async function authenticate(c: Context<{ Bindings: Env }>): Promise<TelegramUser | null> {
+  // Trusted path for the companion bot project (crash-game-bot): it knows the
+  // Telegram user id directly from the bot update (no initData exists in a
+  // plain chat), so it authenticates with a shared secret instead. This lets
+  // the bot reuse all of this Worker's wallet/referral logic over HTTP
+  // rather than duplicating it against the database directly.
+  const botKey = c.req.header("X-Bot-Key");
+  if (botKey) {
+    if (!c.env.BOT_SHARED_KEY || botKey !== c.env.BOT_SHARED_KEY) return null;
+    const userId = Number(c.req.header("X-Telegram-User-Id"));
+    if (!userId) return null;
+    const row = await c.env.DB.prepare(`SELECT id, username, first_name, photo_url, banned FROM users WHERE id = ?`)
+      .bind(userId)
+      .first<{ id: number; username: string | null; first_name: string | null; photo_url: string | null; banned: number }>();
+    if (!row || row.banned) return null;
+    return { id: row.id, username: row.username ?? undefined, first_name: row.first_name ?? "", photo_url: row.photo_url ?? undefined };
+  }
+
   const initData = c.req.header("X-Telegram-Init-Data") || (await safeBodyInitData(c));
   if (!initData) return null;
 
@@ -21,26 +38,39 @@ export async function authenticate(c: Context<{ Bindings: Env }>): Promise<Teleg
   const params = new URLSearchParams(initData);
   const startParam = params.get("start_param") || "";
 
-  const existing = await c.env.DB.prepare(`SELECT id, banned FROM users WHERE id = ?`).bind(user.id).first<{
+  const banned = await upsertUser(c.env, user, startParam);
+  if (banned) return null;
+
+  return user;
+}
+
+/**
+ * Creates the user row (with joining bonus + referral linking) if it
+ * doesn't exist yet, or refreshes their cached name/photo if it does.
+ * Shared by the initData path above and the bot's `/api/bot/ensure-user`
+ * endpoint. Returns true if the user is banned (caller should reject).
+ */
+export async function upsertUser(env: Env, user: TelegramUser, startParam: string): Promise<boolean> {
+  const existing = await env.DB.prepare(`SELECT id, banned FROM users WHERE id = ?`).bind(user.id).first<{
     id: number;
     banned: number;
   }>();
-  if (existing?.banned) return null;
+  if (existing?.banned) return true;
 
   if (!existing) {
-    const joiningBonusRow = await c.env.DB.prepare(`SELECT value FROM settings WHERE key = 'joining_bonus'`).first<{
+    const joiningBonusRow = await env.DB.prepare(`SELECT value FROM settings WHERE key = 'joining_bonus'`).first<{
       value: string;
     }>();
     const joiningBonus = Math.max(0, Math.floor(Number(joiningBonusRow?.value ?? "0")));
 
-    await c.env.DB.prepare(
+    await env.DB.prepare(
       `INSERT INTO users (id, username, first_name, photo_url, balance) VALUES (?, ?, ?, ?, ?)`
     )
       .bind(user.id, user.username ?? null, user.first_name ?? null, user.photo_url ?? null, joiningBonus)
       .run();
 
     if (joiningBonus > 0) {
-      await c.env.DB.prepare(
+      await env.DB.prepare(
         `INSERT INTO transactions (user_id, type, amount, meta) VALUES (?, 'joining_bonus', ?, '{}')`
       )
         .bind(user.id, joiningBonus)
@@ -51,18 +81,15 @@ export async function authenticate(c: Context<{ Bindings: Env }>): Promise<Teleg
     if (m) {
       const referrerId = Number(m[1]);
       if (referrerId !== user.id) {
-        await linkReferral(c.env, user.id, referrerId);
+        await linkReferral(env, user.id, referrerId);
       }
     }
   } else {
-    await c.env.DB.prepare(
-      `UPDATE users SET username = ?, first_name = ?, photo_url = ? WHERE id = ?`
-    )
+    await env.DB.prepare(`UPDATE users SET username = ?, first_name = ?, photo_url = ? WHERE id = ?`)
       .bind(user.username ?? null, user.first_name ?? null, user.photo_url ?? null, user.id)
       .run();
   }
-
-  return user;
+  return false;
 }
 
 async function safeBodyInitData(c: Context): Promise<string | null> {

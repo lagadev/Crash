@@ -34,7 +34,22 @@ if (!isRunningInsideTelegram()) {
   tg.setBackgroundColor?.("#0a0c14");
   document.getElementById("app").innerHTML = appShellHtml();
   runIconFills();
+  applyCrashOnlyViewIfRequested();
   boot();
+}
+
+/**
+ * The companion Telegram bot's "Play Crash" keyboard button opens this Mini
+ * App with `?view=crash` so it launches straight into a crash-only screen -
+ * no tab bar, no way to navigate to Task/Refer/Profile.
+ */
+function applyCrashOnlyViewIfRequested() {
+  const params = new URLSearchParams(location.search);
+  if (params.get("view") !== "crash") return;
+  document.querySelector(".tabbar")?.remove();
+  document.querySelectorAll(".tab-screen").forEach((el) => {
+    if (el.id !== "tab-crash") el.remove();
+  });
 }
 
 function runIconFills() {

@@ -169,6 +169,20 @@
       </div>
 
       <div class="panel">
+        <h3>TK (Taka) Payment Gateway</h3>
+        <div class="field"><label>Gateway Base URL</label><input type="text" id="set-uglypay-url" placeholder="https://uglypay.devugly.workers.dev" /></div>
+        <div class="field"><label>Your Webhook Callback URL</label><input type="text" id="set-uglypay-callback" placeholder="https://your-worker.workers.dev/api/uglypay/webhook" /></div>
+        <div class="field"><label>Star-to-TK Rate (stars per 1 TK)</label><input type="number" id="set-tk-rate" min="0.01" step="0.01" /></div>
+        <p style="color:var(--muted);font-size:12px;margin:0">Set the <code>UGLYPAY_API_KEY</code> secret with <code>wrangler secret put UGLYPAY_API_KEY</code> - it's used both to call the gateway and to verify its webhook signature.</p>
+      </div>
+
+      <div class="panel">
+        <h3>Withdrawals</h3>
+        <div class="field"><label>Withdrawal Fee (%)</label><input type="number" id="set-withdraw-fee" min="0" step="0.1" /></div>
+        <p style="color:var(--muted);font-size:12px;margin:0">Deducted from the requested amount; the user's balance is still debited the full requested amount, but the amount actually paid out is reduced by this fee.</p>
+      </div>
+
+      <div class="panel">
         <h3>Game Tuning ("gamer logic")</h3>
         <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Nudges the provably-fair crash point using the current round's bets: a lot of players queued up biases toward a longer round; any single very large bet biases toward a fast crash.</p>
         <div class="field-row">

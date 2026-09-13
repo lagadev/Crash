@@ -8,6 +8,8 @@ import { botApi } from "./api/bot";
 import { adminApi } from "./api/admin";
 import { tasksApi } from "./api/tasks";
 import { tonApi } from "./api/ton";
+import { uglypayApi } from "./api/uglypay";
+import { botProxyApi } from "./api/botapi";
 
 export { CrashRoom } from "./game/CrashRoom";
 
@@ -20,6 +22,8 @@ app.route("/api/wallet", walletApi);
 app.route("/api/game", gameApi);
 app.route("/api/tasks", tasksApi);
 app.route("/api/ton", tonApi);
+app.route("/api/uglypay", uglypayApi);
+app.route("/api/bot", botProxyApi);
 app.route("/api/admin", adminApi);
 app.route("/telegram", botApi);
 
